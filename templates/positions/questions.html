@@ -89,14 +89,25 @@
     }
     .question-type-cell {
         min-width: 150px !important;
+        max-width: 150px !important;
+        width: 150px !important;
     }
     .test-type-cell {
-        min-width: 200px !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+        width: 250px !important;
     }
     .order-cell {
-        min-width: 100px !important;
+        min-width: 110px !important;
+        max-width: 110px !important;
+        width: 110px !important;
     }
     .actions-cell {
+        min-width: 100px !important;
+        max-width: 100px !important;
+        width: 100px !important;
+    }
+    .active-cell {
         min-width: 100px !important;
     }
 </style>
@@ -134,14 +145,19 @@
                         </select>
                     </td>
                     <td class="test-type-cell">
-                        <select class="form-select" data-field="test_type" {% if question.question_type != 'test' %}disabled{% endif %}>
-                            <option value="">-</option>
-                            {% for value, label in test_types %}
-                            <option value="{{ value }}" {% if value == question.test_type %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
+                        <div class="d-flex align-items-center">
+                            <select class="form-select" data-field="test_type" {% if question.question_type != 'test' %}disabled{% endif %}>
+                                <option value="">-</option>
+                                {% for value, label in test_types %}
+                                <option value="{{ value }}" {% if value == question.test_type %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-warning btn-sm ms-2 edit-test-type" data-bs-toggle="modal" data-bs-target="#testTypeModal">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
                     </td>
                     <td class="order-cell">
                         <input type="number" class="form-control" 
@@ -151,6 +167,11 @@
                     </td>
                     <td class="actions-cell text-center">
                         <div class="btn-group">
+                            <button type="button" class="btn btn-sm {% if question.is_active %}btn-primary{% else %}btn-secondary{% endif %} toggle-active" 
+                                    data-field="is_active" 
+                                    data-active="{{ question.is_active|lower }}">
+                                <i class="bi {% if question.is_active %}bi-toggle-on{% else %}bi-toggle-off{% endif %}"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-danger delete-question">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -208,11 +229,36 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isActive" checked>
+                            <label class="form-check-label" for="isActive">Активен</label>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-primary" id="saveQuestion">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для редактирования типа тестового -->
+<div class="modal fade" id="testTypeModal" tabindex="-1" aria-labelledby="testTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testTypeModalLabel">Редактирование типа тестового</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Здесь будет форма редактирования типа тестового</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary">Сохранить</button>
             </div>
         </div>
     </div>
@@ -234,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const questionType = document.getElementById('questionType');
     const testType = document.getElementById('testType');
     const questionPosition = document.getElementById('questionPosition');
+    const isActive = document.getElementById('isActive');
     const saveQuestionButton = document.getElementById('saveQuestion');
 
     // Обработчик изменения выбранной специализации
@@ -272,6 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const questionTypeValue = questionType.value;
         const testTypeValue = questionTypeValue === 'test' ? testType.value : '';
         const positionValue = questionPosition.value;
+        const isActiveValue = isActive.checked;
 
         if (!questionText) {
             alert('Пожалуйста, введите текст вопроса');
@@ -293,7 +341,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = {
             text: questionText,
             question_type: questionTypeValue,
-            test_type: testTypeValue
+            test_type: testTypeValue,
+            is_active: isActiveValue
         };
 
         fetch(`/questions/create/?position=${encodeURIComponent(positionValue)}`, {
@@ -319,17 +368,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Обработчик изменения типа вопроса в таблице
+    // Обработчик изменения полей вопроса
+    table.addEventListener('click', function(e) {
+        const button = e.target.closest('.toggle-active');
+        if (button) {
+            const row = button.closest('tr');
+            const isActive = button.dataset.active === 'true';
+            
+            // Обновляем состояние кнопки
+            button.dataset.active = (!isActive).toString();
+            button.classList.toggle('btn-primary', !isActive);
+            button.classList.toggle('btn-secondary', isActive);
+            
+            // Обновляем иконку
+            const icon = button.querySelector('i');
+            icon.classList.toggle('bi-toggle-on', !isActive);
+            icon.classList.toggle('bi-toggle-off', isActive);
+            
+            // Обновляем вопрос
+            updateQuestion(row);
+        }
+    });
+
+    // Обработчик изменения полей вопроса
     table.addEventListener('change', function(e) {
-        const select = e.target;
-        if (select.dataset.field === 'question_type') {
-            const row = select.closest('tr');
+        const input = e.target;
+        if (input.dataset.field === 'question_type') {
+            const row = input.closest('tr');
             const testTypeSelect = row.querySelector('[data-field="test_type"]');
-            testTypeSelect.disabled = select.value !== 'test';
-            if (select.value !== 'test') {
+            testTypeSelect.disabled = input.value !== 'test';
+            if (input.value !== 'test') {
                 testTypeSelect.value = '';
-                updateQuestion(row);
             }
+            updateQuestion(row);
         }
     });
 
@@ -369,13 +440,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const questionType = row.querySelector('[data-field="question_type"]').value;
         const testType = row.querySelector('[data-field="test_type"]').value;
         const order = row.querySelector('[data-field="order"]').value;
+        const isActiveButton = row.querySelector('.toggle-active');
+        const isActive = isActiveButton.dataset.active === 'true';
         
         const data = {
             text: text,
             question_type: questionType,
             test_type: questionType === 'test' ? testType : null,
-            order: parseInt(order)
+            order: parseInt(order),
+            is_active: isActive
         };
+
+        console.log('Отправка данных на сервер:', data); // Отладочный вывод
         
         fetch(`{% url "positions:update_question" question_id=0 %}`.replace('0', questionId), {
             method: 'POST',
@@ -392,13 +468,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? Object.values(data.errors).join(', ') 
                     : data.errors;
                 alert('Ошибка при обновлении вопроса: ' + errorMessage);
-                location.reload();
+                // Восстанавливаем предыдущее состояние кнопки
+                const isActiveButton = row.querySelector('.toggle-active');
+                const isActive = isActiveButton.dataset.active === 'true';
+                isActiveButton.dataset.active = (!isActive).toString();
+                isActiveButton.classList.toggle('btn-primary', !isActive);
+                isActiveButton.classList.toggle('btn-secondary', isActive);
+                const icon = isActiveButton.querySelector('i');
+                icon.classList.toggle('bi-toggle-on', !isActive);
+                icon.classList.toggle('bi-toggle-off', isActive);
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('Произошла ошибка при обновлении вопроса');
-            location.reload();
+            // Восстанавливаем предыдущее состояние кнопки
+            const isActiveButton = row.querySelector('.toggle-active');
+            const isActive = isActiveButton.dataset.active === 'true';
+            isActiveButton.dataset.active = (!isActive).toString();
+            isActiveButton.classList.toggle('btn-primary', !isActive);
+            isActiveButton.classList.toggle('btn-secondary', isActive);
+            const icon = isActiveButton.querySelector('i');
+            icon.classList.toggle('bi-toggle-on', !isActive);
+            icon.classList.toggle('bi-toggle-off', isActive);
         });
     }
 

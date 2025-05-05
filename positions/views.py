@@ -431,7 +431,8 @@ def create_question(request):
             position=position,
             question_type=data['question_type'],
             test_type=data.get('test_type'),
-            order=InterviewQuestion.objects.filter(position=position).count() + 1
+            order=InterviewQuestion.objects.filter(position=position).count() + 1,
+            is_active=data.get('is_active', True)
         )
         
         return JsonResponse({
@@ -441,7 +442,8 @@ def create_question(request):
                 'text': question.text,
                 'question_type': question.question_type,
                 'test_type': question.test_type,
-                'order': question.order
+                'order': question.order,
+                'is_active': question.is_active
             }
         })
     except json.JSONDecodeError:
