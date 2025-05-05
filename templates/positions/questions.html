@@ -268,16 +268,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Обработчик сохранения вопроса
     saveQuestionButton.addEventListener('click', function() {
-        const questionText = document.getElementById('questionText').value;
+        const questionText = document.getElementById('questionText').value.trim();
         const questionTypeValue = questionType.value;
         const testTypeValue = questionTypeValue === 'test' ? testType.value : '';
         const positionValue = questionPosition.value;
 
-        if (!questionText || !questionTypeValue || !positionValue) {
-            alert('Пожалуйста, заполните все обязательные поля');
+        if (!questionText) {
+            alert('Пожалуйста, введите текст вопроса');
             return;
         }
-
+        if (!questionTypeValue) {
+            alert('Пожалуйста, выберите тип вопроса');
+            return;
+        }
+        if (!positionValue) {
+            alert('Пожалуйста, выберите специализацию');
+            return;
+        }
         if (questionTypeValue === 'test' && !testTypeValue) {
             alert('Пожалуйста, выберите тип тестового задания');
             return;
