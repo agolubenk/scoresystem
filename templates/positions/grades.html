@@ -1,0 +1,155 @@
+{% extends 'positions/base.html' %}
+
+{% block title %}Грейды{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Грейды</h1>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#gradeModal">
+        <i class="bi bi-plus-circle"></i> Добавить грейд
+    </button>
+</div>
+
+{% if grades %}
+<div class="row">
+    {% for grade in grades %}
+    <div class="col-12 mb-4">
+        <div class="card grade-card" data-grade-id="{{ grade.id }}" style="cursor: pointer;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">{{ grade.name }}</h5>
+                        <p class="card-text">{{ grade.positions }}</p>
+                    </div>
+                    <div class="text-muted">
+                        Порядок: {{ grade.order }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Пока нет ни одного грейда. Нажмите кнопку "Добавить грейд" для создания первого грейда.
+</div>
+{% endif %}
+
+<!-- Модальное окно для создания/редактирования грейда -->
+<div class="modal fade" id="gradeModal" tabindex="-1" aria-labelledby="gradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gradeModalLabel">Создание нового грейда</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="gradeForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" id="gradeId" name="id">
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Название грейда</label>
+                        <input type="text" class="form-control" id="id_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_positions" class="form-label">Должности</label>
+                        <textarea class="form-control" id="id_positions" name="positions" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_order" class="form-label">Порядок</label>
+                        <input type="number" class="form-control" id="id_order" name="order" value="{{ next_order }}" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveGrade">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const saveButton = document.getElementById('saveGrade');
+    const gradeForm = document.getElementById('gradeForm');
+    const modal = new bootstrap.Modal(document.getElementById('gradeModal'));
+    const modalTitle = document.getElementById('gradeModalLabel');
+    const gradeIdInput = document.getElementById('gradeId');
+    const nameInput = document.getElementById('id_name');
+    const positionsInput = document.getElementById('id_positions');
+    const orderInput = document.getElementById('id_order');
+
+    // Обработка клика по карточке грейда
+    document.querySelectorAll('.grade-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const gradeId = this.dataset.gradeId;
+            fetch(`/grades/${gradeId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        gradeIdInput.value = data.grade.id;
+                        nameInput.value = data.grade.name;
+                        positionsInput.value = data.grade.positions;
+                        orderInput.value = data.grade.order;
+                        modalTitle.textContent = 'Редактирование грейда';
+                        modal.show();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при загрузке данных грейда');
+                });
+        });
+    });
+
+    // Обработка сохранения формы
+    saveButton.addEventListener('click', function() {
+        const formData = new FormData(gradeForm);
+        const gradeId = gradeIdInput.value;
+        const method = gradeId ? 'PUT' : 'POST';
+        const url = gradeId ? `/grades/${gradeId}/` : '/grades/';
+        
+        // Преобразуем FormData в объект
+        const data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+        });
+
+        fetch(url, {
+            method: method,
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка при сохранении грейда: ' + JSON.stringify(data.errors));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при отправке формы');
+        });
+    });
+
+    // Сброс формы при закрытии модального окна
+    document.getElementById('gradeModal').addEventListener('hidden.bs.modal', function () {
+        gradeForm.reset();
+        gradeIdInput.value = '';
+        modalTitle.textContent = 'Создание нового грейда';
+        orderInput.value = '{{ next_order }}';
+    });
+});
+</script>
+{% endblock %} 

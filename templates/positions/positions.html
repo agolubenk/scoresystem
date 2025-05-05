@@ -1,0 +1,429 @@
+{% extends 'positions/base.html' %}
+{% load custom_filters %}
+
+{% block title %}Специализации{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Специализации</h1>
+</div>
+
+{% csrf_token %}
+
+<style>
+    .table-responsive {
+        position: relative;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+    }
+    .sticky-column {
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 1;
+        min-width: 300px;
+    }
+    .sticky-header {
+        position: sticky;
+        left: 0;
+        background-color: #212529;
+        z-index: 2;
+    }
+    .table-bordered .sticky-column {
+        border-right: 2px solid #dee2e6;
+    }
+    .add-row-container {
+        position: sticky;
+        left: 0;
+        bottom: 0;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        z-index: 1;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+    .add-row-container .btn {
+        width: 100%;
+        border-radius: 0 0 8px 8px;
+        padding: 8px;
+    }
+    .table {
+        margin-bottom: 0;
+        border-radius: 8px;
+    }
+    .table th, .table td {
+        min-width: 350px;
+    }
+    .table thead th:first-child {
+        border-top-left-radius: 8px;
+    }
+    .table thead th:last-child {
+        border-top-right-radius: 8px;
+    }
+    .editable-cell {
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        min-height: 50px;
+    }
+    .editable-cell:hover {
+        background-color: #f8f9fa;
+    }
+    .editable-cell:focus {
+        background-color: #fff;
+        outline: 2px solid #0d6efd;
+    }
+</style>
+
+<div class="table-responsive">
+    <div class="table-wrapper">
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th rowspan="2" class="sticky-header">Специализация</th>
+                    {% for grade in grades %}
+                    <th colspan="2" class="text-center">{{ grade.name }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for grade in grades %}
+                    <th class="text-center">Подтверждение</th>
+                    <th class="text-center">Повышение</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for position_name in unique_positions %}
+                <tr data-position-name="{{ position_name }}">
+                    <td class="sticky-column">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="editable-cell" 
+                                  data-field="name" 
+                                  data-position-name="{{ position_name }}"
+                                  contenteditable="true">{{ position_name }}</span>
+                            <button type="button" class="btn btn-danger btn-sm delete-position" data-position-name="{{ position_name }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                    {% for grade in grades %}
+                        {% with position_grade=positions_by_grade|get_item:grade.id|filter_position:position_name %}
+                            {% if position_grade %}
+                                <td class="editable-cell" 
+                                    data-field="confirmation_points" 
+                                    data-position-name="{{ position_name }}"
+                                    data-grade-id="{{ grade.id }}"
+                                    contenteditable="true">{{ position_grade.confirmation_points }}</td>
+                                <td class="editable-cell" 
+                                    data-field="promotion_points" 
+                                    data-position-name="{{ position_name }}"
+                                    data-grade-id="{{ grade.id }}"
+                                    contenteditable="true">{{ position_grade.promotion_points }}</td>
+                            {% else %}
+                                <td class="editable-cell" 
+                                    data-field="confirmation_points" 
+                                    data-position-name="{{ position_name }}"
+                                    data-grade-id="{{ grade.id }}"
+                                    contenteditable="true">-</td>
+                                <td class="editable-cell" 
+                                    data-field="promotion_points" 
+                                    data-position-name="{{ position_name }}"
+                                    data-grade-id="{{ grade.id }}"
+                                    contenteditable="true">-</td>
+                            {% endif %}
+                        {% endwith %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="add-row-container">
+        <button type="button" class="btn btn-secondary" id="addNewRow">
+            <i class="bi bi-plus-lg"></i> Добавить строку
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('.table');
+    const tbody = table.querySelector('tbody');
+    const addNewRowButton = document.getElementById('addNewRow');
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    
+    // Парсим JSON с грейдами
+    const gradesData = JSON.parse('{{ grades_json|safe }}');
+
+    // Добавление новой строки
+    addNewRowButton.addEventListener('click', function() {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td class="sticky-column">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="editable-cell" 
+                          data-field="name" 
+                          data-position-name="Новая специализация"
+                          contenteditable="true">Новая специализация</span>
+                    <button type="button" class="btn btn-danger btn-sm delete-row">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+            ${gradesData.map(grade => `
+                <td class="editable-cell" 
+                    data-field="confirmation_points" 
+                    data-position-name="Новая специализация"
+                    data-grade-id="${grade.pk}"
+                    contenteditable="true">-</td>
+                <td class="editable-cell" 
+                    data-field="promotion_points" 
+                    data-position-name="Новая специализация"
+                    data-grade-id="${grade.pk}"
+                    contenteditable="true">-</td>
+            `).join('')}
+        `;
+        tbody.appendChild(newRow);
+    });
+
+    // Обработка удаления строки
+    table.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-row')) {
+            e.target.closest('tr').remove();
+        } else if (e.target.closest('.delete-position')) {
+            const positionName = e.target.closest('.delete-position').dataset.positionName;
+            if (confirm('Вы уверены, что хотите удалить специализацию?')) {
+                deletePosition(positionName);
+            }
+        }
+    });
+
+    // Обработка редактирования ячеек таблицы
+    table.addEventListener('blur', function(e) {
+        const cell = e.target;
+        if (!cell.classList.contains('editable-cell')) return;
+
+        const field = cell.dataset.field;
+        const positionName = cell.dataset.positionName;
+        const gradeId = cell.dataset.gradeId;
+        const value = cell.textContent.trim();
+        
+        if (value === '-' || value === 'Новая специализация') {
+            return;
+        }
+
+        // Сохраняем старое значение для возможности отката
+        cell.dataset.oldValue = cell.textContent;
+
+        if (field === 'name') {
+            // Обновление названия специализации
+            const oldName = cell.dataset.positionName;
+            const newName = value;
+            
+            if (!newName || newName === 'Новая специализация') {
+                alert('Пожалуйста, введите название специализации');
+                cell.textContent = oldName;
+                return;
+            }
+
+            // Проверяем, не существует ли уже специализация с таким именем
+            const existingPositions = Array.from(document.querySelectorAll('[data-field="name"]'))
+                .map(cell => {
+                    const cellPositionName = cell.dataset.positionName;
+                    if (cellPositionName === oldName) return null;
+                    return cell.textContent.trim();
+                })
+                .filter(name => name && name !== 'Новая специализация' && name !== '-');
+            
+            if (existingPositions.includes(newName)) {
+                alert('Специализация с таким названием уже существует');
+                cell.textContent = oldName;
+                return;
+            }
+
+            // Если это новая специализация, создаем ее
+            if (oldName === 'Новая специализация') {
+                // Собираем данные для создания специализации
+                const positionData = {
+                    name: newName,
+                    grade_id: gradesData[0].pk, // Используем первый грейд по умолчанию
+                    confirmation_points: 0,
+                    promotion_points: 0
+                };
+
+                fetch('{% url "positions:create_position" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(positionData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Сервер вернул неверный тип ответа');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        const errorMessage = typeof data.errors === 'object' 
+                            ? Object.values(data.errors).join(', ') 
+                            : data.errors;
+                        throw new Error(errorMessage || 'Ошибка при создании специализации');
+                    }
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message.includes('Failed to fetch')) {
+                        alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+                    } else {
+                        alert('Произошла ошибка при создании специализации: ' + error.message);
+                    }
+                    cell.textContent = oldName;
+                });
+            } else {
+                // Обновляем существующую специализацию
+                fetch('{% url "positions:update_position_by_name" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        old_name: oldName,
+                        new_name: newName
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Сервер вернул неверный тип ответа');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        const errorMessage = typeof data.errors === 'object' 
+                            ? Object.values(data.errors).join(', ') 
+                            : data.errors;
+                        throw new Error(errorMessage || 'Ошибка при обновлении названия');
+                    }
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message.includes('Failed to fetch')) {
+                        alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+                    } else {
+                        alert('Произошла ошибка при обновлении названия: ' + error.message);
+                    }
+                    cell.textContent = oldName;
+                });
+            }
+        } else {
+            // Обновление баллов
+            const points = parseInt(value);
+            if (isNaN(points)) {
+                alert('Пожалуйста, введите числовое значение баллов');
+                cell.textContent = cell.dataset.oldValue || '-';
+                return;
+            }
+
+            fetch('{% url "positions:update_position_by_id" pk=0 %}'.replace('0', gradeId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    position_name: positionName,
+                    confirmation_points: field === 'confirmation_points' ? points : undefined,
+                    promotion_points: field === 'promotion_points' ? points : undefined
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Сервер вернул неверный тип ответа');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    const errorMessage = typeof data.errors === 'object' 
+                        ? Object.values(data.errors).join(', ') 
+                        : data.errors;
+                    throw new Error(errorMessage || 'Ошибка при обновлении баллов');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (error.message.includes('Failed to fetch')) {
+                    alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+                } else {
+                    alert('Произошла ошибка при обновлении баллов: ' + error.message);
+                }
+                cell.textContent = cell.dataset.oldValue || '-';
+            });
+        }
+    }, true);
+
+    function deletePosition(positionName) {
+        fetch('{% url "positions:delete_position" position_name=0 %}'.replace('0', encodeURIComponent(positionName)), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Сервер вернул неверный тип ответа');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.errors || 'Ошибка при удалении специализации');
+            }
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (error.message.includes('Failed to fetch')) {
+                alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+            } else {
+                alert('Произошла ошибка при удалении специализации: ' + error.message);
+            }
+        });
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,580 @@
+{% extends 'positions/base.html' %}
+{% load custom_filters %}
+
+{% block title %}Параметры{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+        <h1 class="mb-0 me-3">Параметры</h1>
+        <select class="form-select" id="positionSelect" style="width: 300px;">
+            <option value="">Все специализации</option>
+            {% for position in positions %}
+            <option value="{{ position.name }}">{{ position.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<style>
+    .table-responsive {
+        position: relative;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+    }
+    .sticky-column {
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 1;
+        min-width: 300px;
+    }
+    .sticky-header {
+        position: sticky;
+        left: 0;
+        background-color: #212529;
+        z-index: 2;
+    }
+    .table-bordered .sticky-column {
+        border-right: 2px solid #dee2e6;
+    }
+    .add-row-container {
+        position: sticky;
+        left: 0;
+        bottom: 0;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        z-index: 1;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+    .add-row-container .btn {
+        width: 100%;
+        border-radius: 0 0 8px 8px;
+        padding: 8px;
+    }
+    .table {
+        margin-bottom: 0;
+        border-radius: 8px;
+    }
+    .table thead th:first-child {
+        border-top-left-radius: 8px;
+    }
+    .table thead th:last-child {
+        border-top-right-radius: 8px;
+    }
+    .table th, .table td {
+        min-width: 350px;
+    }
+    .editable-cell {
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        min-height: 50px;
+    }
+    .editable-cell:hover {
+        background-color: #f8f9fa;
+    }
+    .editable-cell:focus {
+        background-color: #fff;
+        outline: 2px solid #0d6efd;
+    }
+</style>
+
+<div class="table-responsive">
+    <div class="table-wrapper">
+        <table class="table table-bordered" id="parametersTable">
+            <thead class="table-dark">
+                <tr>
+                    <th rowspan="2" class="sticky-header" style="width: 300px;">Параметр</th>
+                    {% for grade in grades %}
+                    <th colspan="1" class="text-center">{{ grade.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for parameter in parameters %}
+                <tr data-parameter-id="{{ parameter.id }}" data-position-name="{{ parameter.position_name|default:'' }}">
+                    <td class="sticky-column">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="editable-cell" 
+                                  data-field="name" 
+                                  data-parameter-id="{{ parameter.id }}"
+                                  contenteditable="true">
+                                {{ parameter.name }}
+                            </span>
+                            <button type="button" class="btn btn-danger btn-sm delete-parameter" data-parameter-id="{{ parameter.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                    {% for grade in grades %}
+                        {% for desc in parameters_by_grade|get_item:grade.id %}
+                            {% if desc.parameter_id == parameter.id %}
+                                <td class="editable-cell" data-description-id="{{ desc.id }}" data-field="description" contenteditable="true">
+                                    {{ desc.description }}
+                                </td>
+                            {% endif %}
+                        {% endfor %}
+                        {% if not parameters_by_grade|get_item:grade.id|filter_parameter:parameter.id %}
+                            <td class="editable-cell" data-parameter-id="{{ parameter.id }}" data-grade-id="{{ grade.id }}" data-field="description" contenteditable="true">
+                                -
+                            </td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="add-row-container mb-1" style="margin-top:-5px; margin-bottom: -10px;">
+        <button type="button" class="btn btn-secondary" id="addNewRow">
+            <i class="bi bi-plus-lg"></i> Добавить строку
+        </button>
+    </div>
+</div>
+
+<!-- Модальное окно для выбора специализации -->
+<div class="modal fade" id="positionSelectModal" tabindex="-1" aria-labelledby="positionSelectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="positionSelectModalLabel">Выберите специализацию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <select class="form-select" id="modalPositionSelect">
+                    <option value="">Без специализации</option>
+                    {% for position in positions %}
+                    <option value="{{ position.name }}">{{ position.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmPosition">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded');
+    
+    const table = document.getElementById('parametersTable');
+    const tbody = table.querySelector('tbody');
+    const addNewRowButton = document.getElementById('addNewRow');
+    const positionSelect = document.getElementById('positionSelect');
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    
+    console.log('Elements found:', {
+        table: !!table,
+        tbody: !!tbody,
+        addNewRowButton: !!addNewRowButton,
+        positionSelect: !!positionSelect,
+        csrfToken: !!csrfToken
+    });
+
+    // Модальное окно
+    const positionSelectModal = new bootstrap.Modal(document.getElementById('positionSelectModal'));
+    const modalPositionSelect = document.getElementById('modalPositionSelect');
+    const confirmPositionButton = document.getElementById('confirmPosition');
+    
+    // Переменные для хранения данных о создаваемом параметре
+    let newParameterData = null;
+    let newParameterCell = null;
+    
+    // Парсим JSON с грейдами
+    const gradesData = JSON.parse('{{ grades_json|safe }}');
+    console.log('Grades data:', gradesData);
+
+    // Добавление новой строки
+    if (addNewRowButton) {
+        addNewRowButton.addEventListener('click', function(e) {
+            console.log('Add row button clicked');
+            e.preventDefault();
+            
+            const newRow = document.createElement('tr');
+            const cells = gradesData.map(grade => 
+                `<td class="editable-cell" data-grade-id="${grade.pk}" data-field="description" contenteditable="true">-</td>`
+            ).join('');
+            
+            newRow.innerHTML = `
+                <td>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="editable-cell" 
+                              data-field="name" 
+                              data-parameter-name="Новый параметр"
+                              contenteditable="true">Новый параметр</span>
+                        <button type="button" class="btn btn-danger btn-sm delete-row">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+                ${cells}
+            `;
+            
+            tbody.appendChild(newRow);
+            console.log('New row added');
+        });
+    } else {
+        console.error('Add row button not found!');
+    }
+
+    // Обработчик изменения выбранной специализации
+    positionSelect.addEventListener('change', function() {
+        const positionName = this.value;
+        const url = new URL(window.location.href);
+        
+        if (positionName) {
+            url.searchParams.set('position', positionName);
+        } else {
+            url.searchParams.delete('position');
+        }
+        
+        window.location.href = url.toString();
+    });
+
+    // Устанавливаем выбранное значение в селекте
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedPosition = urlParams.get('position');
+    if (selectedPosition) {
+        positionSelect.value = selectedPosition;
+    }
+
+    // Обработка удаления строки
+    table.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-row')) {
+            e.target.closest('tr').remove();
+        } else if (e.target.closest('.delete-parameter')) {
+            const parameterId = e.target.closest('.delete-parameter').dataset.parameterId;
+            if (confirm('Вы уверены, что хотите удалить параметр?')) {
+                deleteParameter(parameterId);
+            }
+        }
+    });
+
+    // Обработка редактирования ячеек таблицы
+    table.addEventListener('blur', function(e) {
+        const cell = e.target;
+        if (!cell.classList.contains('editable-cell')) return;
+
+        const descriptionId = cell.dataset.descriptionId;
+        const parameterId = cell.dataset.parameterId;
+        const field = cell.dataset.field;
+        const value = cell.textContent.trim();
+        
+        if (value === '-' || value === 'Новый параметр') {
+            return;
+        }
+
+        // Сохраняем старое значение для возможности отката
+        cell.dataset.oldValue = cell.textContent;
+
+        if (descriptionId) {
+            // Обновление существующего описания
+            fetch(`{% url "positions:update_parameter_description" description_id=0 %}`.replace('0', descriptionId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    description: value
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Сервер вернул неверный тип ответа');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    const errorMessage = typeof data.errors === 'object' 
+                        ? Object.values(data.errors).join(', ') 
+                        : data.errors;
+                    throw new Error(errorMessage || 'Ошибка при обновлении описания');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (error.message.includes('Failed to fetch')) {
+                    alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+                } else {
+                    alert('Произошла ошибка при обновлении описания: ' + error.message);
+                }
+                cell.textContent = cell.dataset.oldValue;
+            });
+        } else if (field === 'name') {
+            // Обновление названия параметра
+            const oldName = cell.dataset.parameterName || 'Новый параметр';
+            const newName = value;
+            
+            if (!newName || newName === 'Новый параметр') {
+                alert('Пожалуйста, введите название параметра');
+                cell.textContent = oldName;
+                return;
+            }
+
+            // Если это новый параметр, создаем его
+            if (oldName === 'Новый параметр') {
+                // Проверяем, не существует ли уже параметр с таким именем
+                const existingParameters = Array.from(document.querySelectorAll('[data-field="name"]'))
+                    .map(cell => {
+                        const cellParameterId = cell.dataset.parameterId;
+                        // Исключаем текущий параметр из проверки
+                        if (cellParameterId === parameterId) return null;
+                        return cell.textContent.trim();
+                    })
+                    .filter(name => name && name !== 'Новый параметр' && name !== '-');
+                
+                if (existingParameters.includes(newName)) {
+                    alert('Параметр с таким названием уже существует');
+                    cell.textContent = oldName;
+                    return;
+                }
+
+                // Если выбрана специализация, создаем параметр сразу
+                if (selectedPosition) {
+                    createParameter(newName, selectedPosition, cell);
+                } else {
+                    // Сохраняем данные для создания параметра
+                    newParameterData = { name: newName };
+                    newParameterCell = cell;
+                    // Показываем модальное окно
+                    positionSelectModal.show();
+                }
+            } else {
+                // Проверяем, не существует ли уже параметр с таким именем
+                const existingParameters = Array.from(document.querySelectorAll('[data-field="name"]'))
+                    .map(cell => {
+                        const cellParameterId = cell.dataset.parameterId;
+                        // Исключаем текущий параметр из проверки
+                        if (cellParameterId === parameterId) return null;
+                        return cell.textContent.trim();
+                    })
+                    .filter(name => name && name !== 'Новый параметр' && name !== '-');
+                
+                if (existingParameters.includes(newName)) {
+                    alert('Параметр с таким названием уже существует');
+                    cell.textContent = oldName;
+                    return;
+                }
+
+                // Обновляем существующий параметр
+                fetch(`{% url "positions:update_parameter" parameter_id=0 %}`.replace('0', parameterId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        name: newName
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Сервер вернул неверный тип ответа');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        const errorMessage = typeof data.errors === 'object' 
+                            ? Object.values(data.errors).join(', ') 
+                            : data.errors;
+                        throw new Error(errorMessage || 'Ошибка при обновлении названия');
+                    }
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message.includes('Failed to fetch')) {
+                        alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+                    } else {
+                        alert('Произошла ошибка при обновлении названия: ' + error.message);
+                    }
+                    cell.textContent = oldName;
+                });
+            }
+        } else {
+            // Создание нового описания
+            const gradeId = cell.dataset.gradeId;
+            const row = cell.closest('tr');
+            const parameterId = row.dataset.parameterId;
+            
+            if (!parameterId) {
+                alert('Сначала создайте параметр, указав его название');
+                cell.textContent = cell.dataset.oldValue || '-';
+                return;
+            }
+            
+            fetch('{% url "positions:create_parameter_description" %}' + (selectedPosition ? `?position=${selectedPosition}` : ''), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    parameter_id: parseInt(parameterId),
+                    grade_id: parseInt(gradeId),
+                    description: value
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Сервер вернул неверный тип ответа');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    const errorMessage = typeof data.errors === 'object' 
+                        ? Object.values(data.errors).join(', ') 
+                        : data.errors;
+                    throw new Error(errorMessage || 'Ошибка при создании описания');
+                }
+                
+                // Обновляем данные ячейки
+                cell.dataset.descriptionId = data.description_id;
+                cell.textContent = data.description;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (error.message.includes('Failed to fetch')) {
+                    alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+                } else {
+                    alert('Произошла ошибка при создании описания: ' + error.message);
+                }
+                cell.textContent = cell.dataset.oldValue;
+            });
+        }
+    }, true);
+
+    // Обработчик подтверждения выбора специализации
+    confirmPositionButton.addEventListener('click', function() {
+        if (newParameterData && newParameterCell) {
+            const selectedPosition = modalPositionSelect.value;
+            createParameter(newParameterData.name, selectedPosition, newParameterCell);
+            positionSelectModal.hide();
+        }
+    });
+
+    // Функция создания параметра
+    function createParameter(name, position, cell) {
+        fetch('{% url "positions:create_parameter" %}' + (position ? `?position=${position}` : ''), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                name: name
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Сервер вернул неверный тип ответа');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                const errorMessage = typeof data.errors === 'object' 
+                    ? Object.values(data.errors).join(', ') 
+                    : data.errors;
+                throw new Error(errorMessage || 'Ошибка при создании параметра');
+            }
+            
+            // Обновляем данные строки
+            cell.dataset.parameterId = data.parameter_id;
+            cell.dataset.parameterName = name;
+            cell.textContent = name;
+            
+            // Обновляем data-parameter-id для всех ячеек в строке
+            const row = cell.closest('tr');
+            row.dataset.parameterId = data.parameter_id;
+            row.querySelectorAll('[data-parameter-id]').forEach(cell => {
+                cell.dataset.parameterId = data.parameter_id;
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (error.message.includes('Failed to fetch')) {
+                alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+            } else {
+                alert('Произошла ошибка при создании параметра: ' + error.message);
+            }
+            cell.textContent = cell.dataset.oldValue || 'Новый параметр';
+        });
+    }
+
+    // Функция удаления параметра
+    function deleteParameter(parameterId) {
+        fetch('{% url "positions:delete_parameter" parameter_id=0 %}'.replace('0', parameterId), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Сервер вернул неверный тип ответа');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.errors || 'Ошибка при удалении параметра');
+            }
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (error.message.includes('Failed to fetch')) {
+                alert('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.');
+            } else {
+                alert('Произошла ошибка при удалении параметра: ' + error.message);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
