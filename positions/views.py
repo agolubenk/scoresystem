@@ -14,6 +14,7 @@ from django.urls import reverse
 import xlsxwriter
 from io import BytesIO
 from datetime import datetime
+import pandas as pd
 
 class GradeListView(ListView):
     model = Grade
@@ -710,7 +711,7 @@ class InterviewConductView(LoginRequiredMixin, UpdateView):
             matrix_data = matrix.get_matrix_data()
             print("Matrix data:", matrix_data)  # Отладочная информация
             
-            # Удаляем старые результаты
+            # Удаляем все существующие результаты
             InterviewResult.objects.filter(interview=interview).delete()
             
             # Создаем новые результаты
@@ -733,6 +734,7 @@ class InterviewConductView(LoginRequiredMixin, UpdateView):
                 final_score = round(total_score, 2)
                 print(f"Final score for parameter {parameter.name}: {final_score}")
                 
+                # Создаем новый результат
                 InterviewResult.objects.create(
                     interview=interview,
                     parameter=parameter,
@@ -883,3 +885,117 @@ def download_interview_results(request, pk):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     return response
+
+@login_required
+def download_score_matrix(request, matrix_id):
+    """Выгрузка матрицы в Excel"""
+    matrix = get_object_or_404(ScoreMatrix, id=matrix_id)
+    matrix_data = matrix.get_matrix_data()
+    
+    # Создаем Excel файл в памяти
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output)
+    worksheet = workbook.add_worksheet()
+    
+    # Форматы
+    header_format = workbook.add_format({
+        'bold': True,
+        'bg_color': '#198754',
+        'font_color': 'white',
+        'border': 1,
+        'align': 'center'
+    })
+    
+    cell_format = workbook.add_format({
+        'border': 1,
+        'align': 'center'
+    })
+    
+    # Заголовки
+    worksheet.write(0, 0, 'Параметр \ Вопрос', header_format)
+    for col, question in enumerate(matrix_data['questions'], start=1):
+        worksheet.write(0, col, question['text'], header_format)
+    worksheet.write(0, len(matrix_data['questions']) + 1, 'Сумма', header_format)
+    
+    # Данные
+    for row, parameter in enumerate(matrix_data['parameters'], start=1):
+        worksheet.write(row, 0, parameter['name'], cell_format)
+        row_sum = 0
+        for col, question in enumerate(matrix_data['questions'], start=1):
+            score = matrix_data['cells'].get(parameter['id'], {}).get(question['id'], 0)
+            worksheet.write(row, col, score, cell_format)
+            row_sum += float(score)
+        worksheet.write(row, len(matrix_data['questions']) + 1, row_sum, cell_format)
+    
+    # Суммы по столбцам
+    worksheet.write(len(matrix_data['parameters']) + 1, 0, 'Сумма', header_format)
+    for col, question in enumerate(matrix_data['questions'], start=1):
+        col_sum = sum(float(matrix_data['cells'].get(param['id'], {}).get(question['id'], 0))
+                     for param in matrix_data['parameters'])
+        worksheet.write(len(matrix_data['parameters']) + 1, col, col_sum, cell_format)
+    
+    # Настройка ширины столбцов
+    worksheet.set_column(0, 0, 30)  # Параметры
+    for col in range(1, len(matrix_data['questions']) + 2):
+        worksheet.set_column(col, col, 15)  # Вопросы и суммы
+    
+    workbook.close()
+    output.seek(0)
+    
+    # Формируем имя файла
+    filename = f'matrix_{matrix.name}_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    
+    # Создаем HTTP ответ
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+@login_required
+def upload_score_matrix(request, matrix_id):
+    """Загрузка матрицы из Excel"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается'})
+    
+    matrix = get_object_or_404(ScoreMatrix, id=matrix_id)
+    excel_file = request.FILES.get('excel_file')
+    
+    if not excel_file:
+        return JsonResponse({'success': False, 'error': 'Файл не найден'})
+    
+    try:
+        # Читаем Excel файл
+        df = pd.read_excel(excel_file)
+        
+        # Получаем параметры и вопросы
+        parameters = Parameter.objects.filter(position=matrix.position)
+        questions = InterviewQuestion.objects.filter(position=matrix.position)
+        
+        # Проверяем соответствие структуры файла
+        if len(df.columns) != len(questions) + 2:  # +2 для параметра и суммы
+            return JsonResponse({
+                'success': False,
+                'error': 'Неверная структура файла. Количество столбцов не соответствует количеству вопросов.'
+            })
+        
+        # Обновляем значения в матрице
+        for index, row in df.iterrows():
+            if index >= len(parameters):
+                break
+                
+            parameter = parameters[index]
+            for col, question in enumerate(questions, start=1):
+                try:
+                    score = float(row[col])
+                    if 0 <= score <= 1:
+                        matrix.update_cell(parameter.id, question.id, score)
+                except (ValueError, TypeError):
+                    continue
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

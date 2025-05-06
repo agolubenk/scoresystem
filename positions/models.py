@@ -294,7 +294,7 @@ class InterviewAnswer(models.Model):
         return f"Ответ {self.interview.candidate_name} на вопрос {self.question.text}"
 
 class InterviewResult(models.Model):
-    interview = models.OneToOneField(Interview, on_delete=models.CASCADE, related_name='result', verbose_name="Интервью")
+    interview = models.ForeignKey(Interview, on_delete=models.CASCADE, related_name='results', verbose_name="Интервью")
     parameter = models.ForeignKey(Parameter, on_delete=models.CASCADE, verbose_name="Параметр")
     score = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Балл")
     

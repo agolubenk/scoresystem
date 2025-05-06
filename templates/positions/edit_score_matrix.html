@@ -14,9 +14,20 @@
                         <a href="{% url 'positions:score_matrices' %}" class="btn btn-light">
                             <i class="bi bi-arrow-left"></i> Назад
                         </a>
+                        <a href="{% url 'positions:download_score_matrix' matrix.id %}" class="btn btn-success me-2">
+                            <i class="bi bi-file-excel"></i> Выгрузить в Excel
+                        </a>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="bi bi-upload"></i> Загрузить из Excel
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        {% if matrix.description %}
+                        <p class="text-muted">{{ matrix.description }}</p>
+                        {% endif %}
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead class="table-light">
@@ -70,6 +81,34 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для загрузки Excel -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">Загрузка данных из Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'positions:upload_score_matrix' matrix.id %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Выберите файл Excel</label>
+                        <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Файл должен содержать таблицу с параметрами в строках и вопросами в столбцах.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -191,6 +230,41 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         });
     });
+
+    // Обработка загрузки Excel файла
+    const uploadForm = document.querySelector('#uploadModal form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Закрываем модальное окно
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('uploadModal'));
+                    modal.hide();
+                    
+                    // Перезагружаем страницу для отображения обновленных данных
+                    window.location.reload();
+                } else {
+                    alert('Ошибка при загрузке файла: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при загрузке файла');
+            });
+        });
+    }
 
     // Вспомогательная функция для получения CSRF токена
     function getCookie(name) {
