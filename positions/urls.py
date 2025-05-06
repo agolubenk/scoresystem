@@ -38,5 +38,6 @@ urlpatterns = [
     path('interview/<int:pk>/result/', views.InterviewResultView.as_view(), name='interview_result'),
     path('interview/<int:pk>/download/', views.download_interview_results, name='interview_download'),
     path('interview/<int:pk>/delete/', views.delete_interview, name='interview_delete'),
+    path('interview/<int:pk>/rerun-ai/', views.rerun_ai_analysis, name='rerun_ai_analysis'),
     path('interviews/', views.InterviewListView.as_view(), name='interview_list'),
 ] 

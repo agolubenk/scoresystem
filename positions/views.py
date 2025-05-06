@@ -16,6 +16,14 @@ from io import BytesIO
 from datetime import datetime
 import pandas as pd
 from .services import analyze_interview_results
+from django.views.decorators.csrf import csrf_exempt
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+print('GEMINI_API_KEY:', GEMINI_API_KEY)
 
 class GradeListView(ListView):
     model = Grade
@@ -816,7 +824,13 @@ class InterviewResultView(LoginRequiredMixin, DetailView):
             ai_analysis = analyze_interview_results(results_data)
         except Exception as e:
             print(f"Error analyzing interview results: {e}")
-            ai_analysis = "Не удалось получить рекомендации по развитию. Пожалуйста, попробуйте позже."
+            ai_analysis = {
+                'summary': 'Нет данных',
+                'strengths': 'Нет данных',
+                'areas': 'Нет данных',
+                'recommendations': 'Нет данных',
+                'conclusion': 'Нет данных',
+            }
         
         # Получаем все ответы на вопросы для интервью с их параметрами
         answers_with_parameters = []
@@ -1046,5 +1060,42 @@ def delete_interview(request, pk):
     try:
         interview.delete()
         return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@require_POST
+def rerun_ai_analysis(request, pk):
+    from .models import Interview, InterviewResult, InterviewAnswer, ScoreMatrix
+    try:
+        interview = Interview.objects.get(pk=pk)
+        matrix = ScoreMatrix.objects.filter(position=interview.position, is_active=True).first()
+        if not matrix:
+            matrix = ScoreMatrix.objects.filter(position=interview.position).first()
+        results_data = []
+        if matrix:
+            matrix_data = matrix.get_matrix_data()
+            answers = InterviewAnswer.objects.filter(interview=interview).select_related('question')
+            question_parameters = {}
+            for cell in matrix.cells.all():
+                question_parameters[cell.question_id] = cell.parameter
+            for answer in answers:
+                parameter = question_parameters.get(answer.question_id)
+                if parameter:
+                    results_data.append({
+                        'parameter_name': parameter.name,
+                        'question_text': answer.question.text,
+                        'answer': answer.notes or '',
+                        'score': float(answer.score)
+                    })
+        ai_analysis = analyze_interview_results(results_data)
+        # Формируем HTML для шаблона
+        html = f"""
+        <div><b>1. Общий анализ результатов:</b><br>{ai_analysis['summary']}</div>
+        <div class='mt-2'><b>2. Сильные стороны:</b><br>{ai_analysis['strengths']}</div>
+        <div class='mt-2'><b>3. Области для развития:</b><br>{ai_analysis['areas']}</div>
+        <div class='mt-2'><b>4. Конкретные рекомендации по улучшению:</b><br>{ai_analysis['recommendations']}</div>
+        <div class='mt-2'><b>Финальное заключение:</b><br>{ai_analysis['conclusion']}</div>
+        """
+        return JsonResponse({'success': True, 'analysis': html})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
