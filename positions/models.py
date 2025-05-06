@@ -305,3 +305,38 @@ class InterviewResult(models.Model):
     
     def __str__(self):
         return f"Результат {self.interview.candidate_name} по параметру {self.parameter.name}"
+
+class Candidate(models.Model):
+    full_name = models.CharField(max_length=255, verbose_name="ФИО")
+    email = models.EmailField(blank=True, null=True, verbose_name="Email")
+    phone = models.CharField(max_length=30, blank=True, null=True, verbose_name="Телефон")
+    telegram = models.CharField(max_length=100, blank=True, null=True, verbose_name="Telegram (ссылка)")
+    desired_position = models.ForeignKey('Position', on_delete=models.PROTECT, null=True, blank=True, verbose_name="Желаемая должность")
+    resume = models.FileField(upload_to='resumes/', blank=True, null=True, verbose_name="Резюме (PDF)")
+    notes = models.TextField(blank=True, verbose_name="Заметки")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_telegram_username(self):
+        if not self.telegram:
+            return None
+        # Убираем @ если он есть в начале
+        username = self.telegram.lstrip('@')
+        # Если это ссылка, извлекаем username
+        if 't.me/' in username:
+            username = username.split('t.me/')[-1]
+        return username
+
+    def get_telegram_link(self):
+        username = self.get_telegram_username()
+        if not username:
+            return None
+        return f"https://t.me/{username}"
+
+    def __str__(self):
+        return self.full_name
+
+    class Meta:
+        verbose_name = "Кандидат"
+        verbose_name_plural = "Кандидаты"
+        ordering = ['full_name']

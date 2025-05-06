@@ -252,6 +252,11 @@
                             <i class="bi bi-person-plus"></i> Новое интервью
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'candidate_list' %}active{% endif %}" href="{% url 'positions:candidate_list' %}">
+                            <i class="bi bi-person-lines-fill"></i> Кандидаты
+                        </a>
+                    </li>
                 </ul>
                 {% if user.is_authenticated %}
                 <div class="user-dropdown">

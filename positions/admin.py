@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Grade, Position, PositionGrade, Parameter, ParameterDescription, InterviewQuestion
+from .models import Grade, Position, PositionGrade, Parameter, ParameterDescription, InterviewQuestion, Candidate
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
@@ -46,4 +46,30 @@ class InterviewQuestionAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         if 'test_type' in form.base_fields:
             form.base_fields['test_type'].required = False
+        return form
+
+@admin.register(Candidate)
+class CandidateAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'email', 'phone', 'desired_position', 'created_at')
+    list_filter = ('desired_position', 'created_at')
+    search_fields = ('full_name', 'email', 'phone', 'desired_position__name')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('full_name', 'email', 'phone', 'telegram')
+        }),
+        ('Должность', {
+            'fields': ('desired_position',)
+        }),
+        ('Документы', {
+            'fields': ('resume',)
+        }),
+        ('Дополнительно', {
+            'fields': ('notes', 'created_at', 'updated_at')
+        }),
+    )
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['desired_position'].queryset = Position.objects.filter(is_active=True)
         return form

@@ -1,0 +1,225 @@
+{% extends 'positions/base.html' %}
+{% block title %}{{ view.object|default_if_none:'Новый кандидат' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.custom-file-upload {
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.custom-file-upload:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+.custom-file-upload i {
+    font-size: 2rem;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+.file-name {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+.input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
+}
+.telegram-input {
+    border-left: none;
+}
+.telegram-input:focus {
+    border-color: #ced4da;
+    box-shadow: none;
+}
+.pdf-preview-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+    color: #6c757d;
+    background-color: transparent;
+    border: 1px solid #6c757d;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin-left: 0.5rem;
+}
+.pdf-preview-btn:hover {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+    text-decoration: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">{{ view.object|default_if_none:'Новый кандидат' }}</h4>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form.non_field_errors }}
+                        
+                        <div class="mb-3">
+                            {{ form.full_name.label_tag }}
+                            {{ form.full_name }}
+                            {{ form.full_name.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.email.label_tag }}
+                            {{ form.email }}
+                            {{ form.email.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.phone.label_tag }}
+                            {{ form.phone }}
+                            {{ form.phone.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.telegram.label_tag }}
+                            <div class="input-group">
+                                <span class="input-group-text">@</span>
+                                {{ form.telegram }}
+                            </div>
+                            {{ form.telegram.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.desired_position.label_tag }}
+                            {{ form.desired_position }}
+                            {{ form.desired_position.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Резюме (PDF)</label>
+                            <div class="d-flex align-items-center">
+                                <div class="custom-file-upload flex-grow-1" onclick="document.getElementById('id_resume').click()">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <div class="file-name" id="fileName">
+                                        {% if form.instance.resume %}
+                                            {{ form.instance.resume.name }}
+                                        {% else %}
+                                            Перетащите файл сюда или нажмите для выбора
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% if form.instance.resume %}
+                                <button type="button" class="pdf-preview-btn" onclick="previewPdf('{% url 'positions:candidate_resume_preview' form.instance.pk %}')">Предпросмотр</button>
+                                {% endif %}
+                            </div>
+                            {{ form.resume }}
+                            {{ form.resume.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.notes.label_tag }}
+                            {{ form.notes }}
+                            {{ form.notes.errors }}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'positions:candidate_list' %}" class="btn btn-secondary">Назад</a>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для предпросмотра PDF -->
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfPreviewModalLabel">Предпросмотр резюме</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="pdfViewer" style="width: 100%; height: 80vh; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('id_resume');
+    const fileName = document.getElementById('fileName');
+    
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            fileName.textContent = this.files[0].name;
+        }
+    });
+    
+    // Drag and drop functionality
+    const dropZone = document.querySelector('.custom-file-upload');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight(e) {
+        dropZone.classList.add('border-primary');
+    }
+    
+    function unhighlight(e) {
+        dropZone.classList.remove('border-primary');
+    }
+    
+    dropZone.addEventListener('drop', handleDrop, false);
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            fileInput.files = files;
+            fileName.textContent = files[0].name;
+        }
+    }
+});
+
+function previewPdf(url) {
+    var modalEl = document.getElementById('pdfPreviewModal');
+    if (window.bootstrap && modalEl) {
+        var modal = new bootstrap.Modal(modalEl);
+        document.getElementById('pdfViewer').src = url;
+        modal.show();
+    } else {
+        window.open(url, '_blank');
+    }
+}
+</script>
+{% endblock %} 

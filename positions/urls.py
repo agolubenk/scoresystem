@@ -40,4 +40,10 @@ urlpatterns = [
     path('interview/<int:pk>/delete/', views.delete_interview, name='interview_delete'),
     path('interview/<int:pk>/rerun-ai/', views.rerun_ai_analysis, name='rerun_ai_analysis'),
     path('interviews/', views.InterviewListView.as_view(), name='interview_list'),
+    path('candidates/', views.CandidateListView.as_view(), name='candidate_list'),
+    path('candidates/create/', views.CandidateCreateView.as_view(), name='candidate_create'),
+    path('candidates/<int:pk>/', views.CandidateDetailView.as_view(), name='candidate_detail'),
+    path('candidates/<int:pk>/edit/', views.CandidateUpdateView.as_view(), name='candidate_edit'),
+    path('candidates/<int:pk>/delete/', views.CandidateDeleteView.as_view(), name='candidate_delete'),
+    path('candidates/<int:pk>/resume-preview/', views.CandidateResumePreviewView.as_view(), name='candidate_resume_preview'),
 ] 

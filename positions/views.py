@@ -1,16 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import CreateView, ListView, UpdateView, DetailView
-from django.http import JsonResponse, HttpResponse
+from django.views.generic import CreateView, ListView, UpdateView, DetailView, DeleteView
+from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.utils.decorators import method_decorator
 import json
 from django.core.serializers import serialize
-from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult
-from .forms import GradeForm
+from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate
+from .forms import GradeForm, CandidateForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 import xlsxwriter
 from io import BytesIO
 from datetime import datetime
@@ -19,6 +19,7 @@ from .services import analyze_interview_results
 from django.views.decorators.csrf import csrf_exempt
 import os
 from dotenv import load_dotenv
+from django.views import View
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -1099,3 +1100,47 @@ def rerun_ai_analysis(request, pk):
         return JsonResponse({'success': True, 'analysis': html})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+class CandidateListView(LoginRequiredMixin, ListView):
+    model = Candidate
+    template_name = 'positions/candidate_list.html'
+    context_object_name = 'candidates'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.GET.get('q')
+        if q:
+            qs = qs.filter(full_name__icontains=q)
+        return qs.order_by('full_name')
+
+class CandidateCreateView(LoginRequiredMixin, CreateView):
+    model = Candidate
+    form_class = CandidateForm
+    template_name = 'positions/candidate_form.html'
+    success_url = reverse_lazy('positions:candidate_list')
+
+class CandidateUpdateView(LoginRequiredMixin, UpdateView):
+    model = Candidate
+    form_class = CandidateForm
+    template_name = 'positions/candidate_form.html'
+    success_url = reverse_lazy('positions:candidate_list')
+
+class CandidateDetailView(LoginRequiredMixin, DetailView):
+    model = Candidate
+    template_name = 'positions/candidate_detail.html'
+    context_object_name = 'candidate'
+
+class CandidateDeleteView(LoginRequiredMixin, DeleteView):
+    model = Candidate
+    template_name = 'positions/candidate_confirm_delete.html'
+    success_url = reverse_lazy('positions:candidate_list')
+
+class CandidateResumePreviewView(View):
+    def get(self, request, pk):
+        candidate = get_object_or_404(Candidate, pk=pk)
+        if not candidate.resume:
+            return HttpResponse('Резюме не найдено', status=404)
+        response = FileResponse(candidate.resume, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{candidate.resume.name}"'
+        return response

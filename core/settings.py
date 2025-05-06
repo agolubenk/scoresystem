@@ -130,3 +130,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Gemini AI settings
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

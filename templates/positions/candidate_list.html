@@ -1,0 +1,123 @@
+{% extends 'positions/base.html' %}
+{% block title %}Кандидаты{% endblock %}
+
+{% block extra_css %}
+<style>
+.pdf-preview-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+    color: #6c757d;
+    background-color: transparent;
+    border: 1px solid #6c757d;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+.pdf-preview-btn:hover {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+    text-decoration: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Кандидаты</h2>
+        <a href="{% url 'positions:candidate_create' %}" class="btn btn-success">Добавить кандидата</a>
+    </div>
+    <form method="get" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Поиск по ФИО..." value="{{ request.GET.q }}">
+            <button class="btn btn-outline-secondary" type="submit">Поиск</button>
+        </div>
+    </form>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>ФИО</th>
+                    <th>Email</th>
+                    <th>Телефон</th>
+                    <th>Telegram</th>
+                    <th>Желаемая должность</th>
+                    <th>Резюме</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidate in candidates %}
+                <tr>
+                    <td><a href="{% url 'positions:candidate_detail' candidate.pk %}">{{ candidate.full_name }}</a></td>
+                    <td>{{ candidate.email }}</td>
+                    <td>{{ candidate.phone }}</td>
+                    <td>{% if candidate.telegram %}<a href="{{ candidate.get_telegram_link }}" target="_blank">@{{ candidate.get_telegram_username }}</a>{% endif %}</td>
+                    <td>{{ candidate.desired_position.name }}</td>
+                    <td>
+                        {% if candidate.resume %}
+                        <button class="pdf-preview-btn" onclick="previewPdf('{% url 'positions:candidate_resume_preview' candidate.pk %}')">Предпросмотр</button>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'positions:candidate_edit' candidate.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                        <a href="{% url 'positions:candidate_delete' candidate.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center">Нет кандидатов</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if is_paginated %}
+    <nav>
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Назад</a></li>
+            {% endif %}
+            {% for num in paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a></li>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Вперёд</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Модальное окно для предпросмотра PDF -->
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-labelledby="pdfPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfPreviewModalLabel">Предпросмотр резюме</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="pdfViewer" style="width: 100%; height: 80vh; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewPdf(url) {
+    var modalEl = document.getElementById('pdfPreviewModal');
+    if (window.bootstrap && modalEl) {
+        var modal = new bootstrap.Modal(modalEl);
+        document.getElementById('pdfViewer').src = url;
+        modal.show();
+    } else {
+        window.open(url, '_blank');
+    }
+}
+</script>
+{% endblock %} 

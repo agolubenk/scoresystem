@@ -1,0 +1,23 @@
+{% extends 'positions/base.html' %}
+{% block title %}Удаление кандидата{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h4 class="card-title text-danger mb-3">Удаление кандидата</h4>
+                    <p>Вы уверены, что хотите удалить кандидата <b>{{ object.full_name }}</b>?</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'positions:candidate_list' %}" class="btn btn-secondary">Отмена</a>
+                            <button type="submit" class="btn btn-danger">Удалить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
