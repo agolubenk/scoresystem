@@ -1,4 +1,5 @@
 {% extends 'positions/base.html' %}
+{% load positions_extras %}
 
 {% block title %}Список интервью{% endblock %}
 
@@ -41,131 +42,198 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Фильтры -->
-    <div class="row filter-section">
+    <div class="row justify-content-center">
         <div class="col-12">
             <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Список интервью</h5>
+                    <a href="{% url 'positions:interview_create' %}" class="btn btn-light">
+                        <i class="bi bi-plus-lg"></i> Новое интервью
+                    </a>
+                </div>
                 <div class="card-body">
-                    <form method="get" class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label for="position" class="form-label">Специализация</label>
-                            <select name="position" id="position" class="form-select">
-                                <option value="">Все специализации</option>
-                                {% for position in positions %}
-                                <option value="{{ position.id }}" {% if selected_position == position.id|stringformat:"i" %}selected{% endif %}>
-                                    {{ position.name }}
-                                </option>
+                    <!-- Фильтр по специализации -->
+                    <div class="mb-4">
+                        <form method="get" class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label for="position" class="form-label">Специализация</label>
+                                <select name="position" id="position" class="form-select" onchange="this.form.submit()">
+                                    <option value="">Все специализации</option>
+                                    {% for position in positions %}
+                                    <option value="{{ position.id }}" {% if selected_position == position.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ position.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Таблица интервью -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Кандидат</th>
+                                    <th>Специализация</th>
+                                    <th>Текущий грейд</th>
+                                    <th>Ожидаемый грейд</th>
+                                    <th>Набранные баллы</th>
+                                    <th>Рекомендуемый грейд</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for interview in interviews %}
+                                <tr>
+                                    <td>{{ interview.created_at|date:"d.m.Y H:i" }}</td>
+                                    <td>{{ interview.candidate_name }}</td>
+                                    <td>{{ interview.position.name }}</td>
+                                    <td>{{ interview.current_grade.name|default:"-" }}</td>
+                                    <td>{{ interview.expected_grade.name|default:"-" }}</td>
+                                    <td>
+                                        {% with total_score=interview.results.all|sum_scores %}
+                                        {{ total_score|floatformat:2 }}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% with recommended_grade=interview.results.all|get_recommended_grade %}
+                                        {{ recommended_grade|default:"-" }}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'positions:interview_result' interview.pk %}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger delete-interview" data-interview-id="{{ interview.pk }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">Нет доступных интервью</td>
+                                </tr>
                                 {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary w-100">Применить</button>
-                        </div>
-                    </form>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Пагинация -->
+                    {% if is_paginated %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if selected_position %}&position={{ selected_position }}{% endif %}">&laquo; Первая</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_position %}&position={{ selected_position }}{% endif %}">Предыдущая</a>
+                            </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_position %}&position={{ selected_position }}{% endif %}">Следующая</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_position %}&position={{ selected_position }}{% endif %}">Последняя &raquo;</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Список интервью -->
-    <div class="row">
-        {% for interview in interviews %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card interview-card">
-                <div class="card-body">
-                    <div class="interview-header mb-3">
-                        <h5 class="card-title mb-0">{{ interview.candidate_name }}</h5>
-                        <span class="badge bg-primary">{{ interview.position.name }}</span>
-                    </div>
-                    
-                    <div class="interview-meta mb-3">
-                        <div class="mb-2">
-                            <strong>Ожидаемый грейд:</strong>
-                            <span class="interview-grade">{{ interview.expected_grade.name }}</span>
-                        </div>
-                        {% if interview.current_grade %}
-                        <div class="mb-2">
-                            <strong>Текущий грейд:</strong>
-                            <span class="interview-grade">{{ interview.current_grade.name }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="mb-2">
-                            <strong>Ожидаемая ЗП:</strong>
-                            <span class="interview-salary">{{ interview.expected_salary }} ₽</span>
-                        </div>
-                        <div>
-                            <strong>Дата:</strong>
-                            {{ interview.created_at|date:"d.m.Y H:i" }}
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'positions:interview_result' interview.pk %}" class="btn btn-outline-primary">
-                            Результаты
-                        </a>
-                        <a href="{% url 'positions:interview_conduct' interview.pk %}" class="btn btn-outline-secondary">
-                            Провести
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <div class="alert alert-info">
-                Интервью не найдены
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Пагинация -->
-    {% if is_paginated %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if selected_position %}&position={{ selected_position }}{% endif %}" aria-label="First">
-                            <span aria-hidden="true">&laquo;&laquo;</span>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_position %}&position={{ selected_position }}{% endif %}" aria-label="Previous">
-                            <span aria-hidden="true">&laquo;</span>
-                        </a>
-                    </li>
-                    {% endif %}
-
-                    {% for num in page_obj.paginator.page_range %}
-                        {% if page_obj.number == num %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ num }}</span>
-                        </li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if selected_position %}&position={{ selected_position }}{% endif %}">{{ num }}</a>
-                        </li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_position %}&position={{ selected_position }}{% endif %}" aria-label="Next">
-                            <span aria-hidden="true">&raquo;</span>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_position %}&position={{ selected_position }}{% endif %}" aria-label="Last">
-                            <span aria-hidden="true">&raquo;&raquo;</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-    </div>
-    {% endif %}
 </div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить это интервью?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавляем обработчики для всех кнопок удаления
+    document.querySelectorAll('.delete-interview').forEach(button => {
+        button.addEventListener('click', function() {
+            const interviewId = this.dataset.interviewId;
+            deleteInterview(interviewId);
+        });
+    });
+});
+
+function deleteInterview(interviewId) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const confirmButton = document.getElementById('confirmDelete');
+    
+    confirmButton.onclick = function() {
+        fetch(`/interview/${interviewId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Ошибка при удалении интервью: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при удалении интервью');
+        });
+        
+        modal.hide();
+    };
+    
+    modal.show();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 {% endblock %} 

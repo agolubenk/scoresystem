@@ -37,5 +37,6 @@ urlpatterns = [
     path('interview/<int:pk>/conduct/', views.InterviewConductView.as_view(), name='interview_conduct'),
     path('interview/<int:pk>/result/', views.InterviewResultView.as_view(), name='interview_result'),
     path('interview/<int:pk>/download/', views.download_interview_results, name='interview_download'),
+    path('interview/<int:pk>/delete/', views.delete_interview, name='interview_delete'),
     path('interviews/', views.InterviewListView.as_view(), name='interview_list'),
 ] 

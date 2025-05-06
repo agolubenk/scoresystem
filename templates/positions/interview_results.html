@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Результаты интервью</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Информация о кандидате</h5>
+                    <p><strong>Кандидат:</strong> {{ interview.candidate_name }}</p>
+                    <p><strong>Специализация:</strong> {{ interview.position.name }}</p>
+                    <p><strong>Текущий грейд:</strong> {{ interview.current_grade.name }}</p>
+                    <p><strong>Ожидаемый грейд:</strong> {{ interview.expected_grade.name }}</p>
+                    <p><strong>Дата интервью:</strong> {{ interview.created_at|date:"d.m.Y H:i" }}</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Результаты по параметрам</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Параметр</th>
+                                    <th>Вопрос</th>
+                                    <th>Ответ</th>
+                                    <th>Оценка</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>{{ result.parameter.name }}</td>
+                                    <td>{{ result.question.text }}</td>
+                                    <td>{{ result.answer }}</td>
+                                    <td>{{ result.score }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Рекомендации по развитию</h5>
+                    <div class="ai-analysis">
+                        {{ ai_analysis|linebreaks }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Общие заметки</h5>
+                    <p>{{ interview.general_notes|linebreaks }}</p>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <a href="{% url 'positions:interview_list' %}" class="btn btn-secondary">Назад к списку</a>
+                <a href="{% url 'positions:interview_download' interview.id %}" class="btn btn-primary">Скачать результаты</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ai-analysis {
+        white-space: pre-line;
+        line-height: 1.6;
+    }
+    .ai-analysis h3 {
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        color: #2c3e50;
+    }
+    .ai-analysis ul {
+        padding-left: 1.5rem;
+    }
+    .ai-analysis li {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %} 

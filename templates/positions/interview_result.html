@@ -41,126 +41,167 @@
         border-radius: 0.5rem;
         margin-top: 1rem;
     }
-    
+
     .chart-container {
         position: relative;
         height: 400px;
         width: 100%;
-        margin: 2rem 0;
+        max-width: 600px;
+        margin: 2rem auto;
+    }
+
+    .ai-analysis {
+        white-space: pre-line;
+        line-height: 1.6;
+    }
+
+    .question-block {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .question-text {
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .answer-quote {
+        background-color: #f8f9fa;
+        border-left: 4px solid #198754;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 0.25rem;
+        position: relative;
+    }
+
+    .answer-quote::before {
+        content: '"';
+        font-size: 4rem;
+        color: #198754;
+        opacity: 0.2;
+        position: absolute;
+        top: -1rem;
+        left: 0.5rem;
+    }
+
+    .answer-text {
+        font-style: italic;
+        color: #495057;
+        line-height: 1.6;
+        margin-bottom: 0.5rem;
+    }
+
+    .answer-score {
+        font-weight: 600;
+        color: #198754;
+        margin-top: 0.5rem;
+        text-align: right;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container mt-4">
     <div class="row">
         <div class="col-12">
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-body">
-                    <h2 class="card-title mb-4">Результаты интервью</h2>
-                    
-                    <!-- Информация о кандидате -->
-                    <div class="row mb-4">
+                    <h4 class="card-title">Результаты интервью</h4>
+                    <div class="row">
                         <div class="col-md-6">
-                            <h5>Кандидат: {{ object.candidate_name }}</h5>
-                            <p>Специализация: {{ object.position.name }}</p>
-                            <p>Ожидаемый грейд: {{ object.expected_grade.name }}</p>
-                            {% if object.current_grade %}
-                            <p>Текущий грейд: {{ object.current_grade.name }}</p>
+                            <p><strong>Кандидат:</strong> {{ object.candidate_name }}</p>
+                            <p><strong>Специализация:</strong> {{ object.position.name }}</p>
+                            <p><strong>Текущий грейд:</strong> {{ object.current_grade.name|default:"Не указан" }}</p>
+                            <p><strong>Ожидаемый грейд:</strong> {{ object.expected_grade.name }}</p>
+                            <p><strong>Дата интервью:</strong> {{ object.created_at|date:"d.m.Y" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Общий балл:</strong> {{ total_score|floatformat:2 }}</p>
+                            <p><strong>Рекомендуемый грейд:</strong> {{ grade.name }}</p>
+                            {% if grade_change %}
+                            <p><strong>Изменение грейда:</strong> {{ grade_change }}</p>
                             {% endif %}
                         </div>
-                        <div class="col-md-6 text-md-end">
-                            <p>Ожидаемая ЗП: {{ object.expected_salary }} ₽</p>
-                            <p>Дата: {{ object.created_at|date:"d.m.Y H:i" }}</p>
-                        </div>
                     </div>
-
-                    <!-- Радиальная диаграмма -->
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title">Результаты по параметрам</h5>
-                            <div class="chart-container">
-                                <canvas id="radarChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Результаты по параметрам -->
-                    <div class="row">
-                        {% for result in results %}
-                        <div class="col-md-4">
-                            <div class="card result-card">
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ result.parameter.name }}</h5>
-                                    <p class="parameter-score">{{ result.score }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <!-- Общий балл и грейд -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 border-end">
-                                            <h5 class="card-title">Общий балл</h5>
-                                            <p class="total-score">{{ total_score }}</p>
-                                        </div>
-                                        {% if grade %}
-                                        <div class="col-md-6">
-                                            <h5 class="card-title">Рекомендуемый грейд</h5>
-                                            <p class="grade-info mb-0">
-                                                {{ grade.name }}
-                                                {% if grade_change %}
-                                                <br>
-                                                <small class="text-muted">{{ grade_change }}</small>
-                                                {% endif %}
-                                            </p>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="text-end mt-3">
-                                        <a href="{% url 'positions:interview_download' object.pk %}" class="btn btn-success">
-                                            <i class="bi bi-file-excel"></i> Скачать результаты
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Ответы на вопросы -->
-                    <div class="mt-4">
-                        <h4>Ответы на вопросы</h4>
-                        {% for answer in answers %}
-                        <div class="card answer-card">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ answer.question.text }}</h5>
-                                <p class="answer-score">Балл: {{ answer.score }}</p>
-                                {% if answer.notes %}
-                                <div class="notes-section">
-                                    <h6>Заметки:</h6>
-                                    <p>{{ answer.notes }}</p>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <!-- Общие заметки -->
-                    {% if object.general_notes %}
-                    <div class="mt-4">
-                        <h4>Общие заметки</h4>
-                        <div class="notes-section">
-                            {{ object.general_notes }}
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Результаты по параметрам</h5>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                        <input type="hidden" id="chartData"
+                            data-labels='[{% for result in results %}"{{ result.parameter.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}]'
+                            data-scores='[{% for result in results %}{{ result.score }}{% if not forloop.last %}, {% endif %}{% endfor %}]'>
+                    </div>
+                    <div class="table-responsive mt-4">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Параметр</th>
+                                    <th>Балл</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>{{ result.parameter.name }}</td>
+                                    <td>{{ result.score|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Ответы на вопросы</h5>
+                    <div class="questions-container">
+                        {% for answer in answers %}
+                        <div class="question-block">
+                            <div class="question-text">{{ answer.answer.question.text }}</div>
+                            {% if answer.answer.notes %}
+                            <div class="answer-quote">
+                                <div class="answer-text">{{ answer.answer.notes|linebreaks }}</div>
+                                <div class="answer-score">Оценка: {{ answer.answer.score|floatformat:2 }}</div>
+                            </div>
+                            {% else %}
+                            <div class="answer-score">Оценка: {{ answer.answer.score|floatformat:2 }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Рекомендации по развитию</h5>
+                    <div class="ai-analysis">
+                        {{ ai_analysis|linebreaks }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Общие заметки</h5>
+                    <p>{{ object.general_notes|linebreaks }}</p>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'positions:interview_list' %}" class="btn btn-secondary">Назад к списку</a>
+                <a href="{% url 'positions:interview_download' object.pk %}" class="btn btn-primary">Скачать результаты</a>
             </div>
         </div>
     </div>
@@ -170,31 +211,25 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Данные для диаграммы
-const chartData = {
-    labels: [
-        {% for result in results %}
-            "{{ result.parameter.name }}"{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ],
-    scores: [
-        {% for result in results %}
-            {{ result.score }}{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ]
-};
-
 document.addEventListener('DOMContentLoaded', function() {
+    const chartData = document.getElementById('chartData');
+    const fullLabels = JSON.parse(chartData.dataset.labels);
+    const scores = JSON.parse(chartData.dataset.scores);
+
+    // Обрезаем подписи до 20 символов
+    const shortLabels = fullLabels.map(function(label) {
+        return label.length > 20 ? label.slice(0, 20) + '…' : label;
+    });
+
     const ctx = document.getElementById('radarChart').getContext('2d');
-    
-    // Создание радиальной диаграммы
+
     new Chart(ctx, {
         type: 'radar',
         data: {
-            labels: chartData.labels,
+            labels: shortLabels,
             datasets: [{
                 label: 'Баллы по параметрам',
-                data: chartData.scores,
+                data: scores,
                 backgroundColor: 'rgba(25, 135, 84, 0.2)',
                 borderColor: 'rgba(25, 135, 84, 1)',
                 borderWidth: 2,
@@ -205,21 +240,51 @@ document.addEventListener('DOMContentLoaded', function() {
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 r: {
                     beginAtZero: true,
                     max: 10,
                     ticks: {
-                        stepSize: 2
+                        stepSize: 2,
+                        backdropColor: 'transparent',
+                        font: {
+                            size: 10
+                        }
+                    },
+                    pointLabels: {
+                        font: {
+                            size: 9,
+                            weight: 'bold'
+                        },
+                        callback: function(value, index) {
+                            return shortLabels[index];
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    angleLines: {
+                        color: 'rgba(0, 0, 0, 0.1)'
                     }
                 }
             },
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return fullLabels[context[0].dataIndex];
+                        },
+                        label: function(context) {
+                            return `Балл: ${context.raw.toFixed(2)}`;
+                        }
+                    }
                 }
-            },
-            maintainAspectRatio: false
+            }
         }
     });
 });

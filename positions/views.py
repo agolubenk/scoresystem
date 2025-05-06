@@ -15,6 +15,7 @@ import xlsxwriter
 from io import BytesIO
 from datetime import datetime
 import pandas as pd
+from .services import analyze_interview_results
 
 class GradeListView(ListView):
     model = Grade
@@ -765,19 +766,11 @@ class InterviewResultView(LoginRequiredMixin, DetailView):
             position=interview.position
         ).select_related('grade').order_by('-grade__order')
         
-        print(f"\nDebug info for interview {interview.id}:")
-        print(f"Total score: {total_score}")
-        print(f"Current grade: {interview.current_grade}")
-        
         recommended_grade = None
         grade_change = None
         
         # Ищем первый грейд, для которого набранных баллов достаточно
         for position_grade in position_grades:
-            print(f"\nChecking grade {position_grade.grade.name}:")
-            print(f"Confirmation points: {position_grade.confirmation_points}")
-            print(f"Promotion points: {position_grade.promotion_points}")
-            
             if total_score >= position_grade.confirmation_points:
                 recommended_grade = position_grade.grade
                 if interview.current_grade:
@@ -785,21 +778,65 @@ class InterviewResultView(LoginRequiredMixin, DetailView):
                         grade_change = "повышение"
                     else:
                         grade_change = "подтверждение"
-                print(f"Selected grade: {recommended_grade.name}")
-                print(f"Grade change: {grade_change}")
                 break
+        
+        # Получаем активную матрицу для позиции
+        matrix = ScoreMatrix.objects.filter(position=interview.position, is_active=True).first()
+        if not matrix:
+            matrix = ScoreMatrix.objects.filter(position=interview.position).first()
+        
+        # Подготовка данных для анализа
+        results_data = []
+        if matrix:
+            matrix_data = matrix.get_matrix_data()
+            
+            # Получаем все ответы на вопросы
+            answers = InterviewAnswer.objects.filter(
+                interview=interview
+            ).select_related('question')
+            
+            # Создаем словарь для хранения параметров вопросов
+            question_parameters = {}
+            for cell in matrix.cells.all():
+                question_parameters[cell.question_id] = cell.parameter
+            
+            # Добавляем параметры к ответам
+            for answer in answers:
+                parameter = question_parameters.get(answer.question_id)
+                if parameter:
+                    results_data.append({
+                        'parameter_name': parameter.name,
+                        'question_text': answer.question.text,
+                        'answer': answer.notes or '',
+                        'score': float(answer.score)
+                    })
+        
+        # Получаем анализ от Gemini AI
+        try:
+            ai_analysis = analyze_interview_results(results_data)
+        except Exception as e:
+            print(f"Error analyzing interview results: {e}")
+            ai_analysis = "Не удалось получить рекомендации по развитию. Пожалуйста, попробуйте позже."
+        
+        # Получаем все ответы на вопросы для интервью с их параметрами
+        answers_with_parameters = []
+        if matrix:
+            for answer in answers:
+                parameter = question_parameters.get(answer.question_id)
+                if parameter:
+                    answers_with_parameters.append({
+                        'answer': answer,
+                        'parameter': parameter
+                    })
         
         context.update({
             'results': results,
             'total_score': total_score,
             'grade': recommended_grade,
             'grade_change': grade_change,
-            'answers': InterviewAnswer.objects.filter(interview=interview)
+            'answers': answers_with_parameters,
+            'ai_analysis': ai_analysis
         })
-        
-        print("\nContext data:")
-        print(f"Grade in context: {context.get('grade')}")
-        print(f"Grade change in context: {context.get('grade_change')}")
         
         return context
 
@@ -814,7 +851,7 @@ class InterviewListView(LoginRequiredMixin, ListView):
         position_id = self.request.GET.get('position')
         if position_id:
             queryset = queryset.filter(position_id=position_id)
-        return queryset.select_related('position', 'expected_grade', 'current_grade')
+        return queryset.select_related('position', 'expected_grade', 'current_grade').prefetch_related('results')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -997,5 +1034,17 @@ def upload_score_matrix(request, matrix_id):
         
         return JsonResponse({'success': True})
         
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def delete_interview(request, pk):
+    """Удаление интервью"""
+    interview = get_object_or_404(Interview, pk=pk)
+    
+    try:
+        interview.delete()
+        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
