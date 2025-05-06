@@ -15,6 +15,7 @@
             min-height: 100vh;
             background-color: #f8f9fa;
             padding-top: 56px; /* Высота навбара */
+            color: #212529; /* Цвет текста по умолчанию */
         }
         
         .navbar {
@@ -25,12 +26,16 @@
         .navbar-brand {
             font-weight: 600;
             color: #fff;
+            font-size: 1.25rem;
         }
         
         .nav-link {
             color: #fff;
             opacity: 0.8;
             transition: all 0.3s;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            margin: 0 0.25rem;
         }
         
         .nav-link:hover {
@@ -41,10 +46,12 @@
         .nav-link.active {
             opacity: 1;
             background-color: rgba(255, 255, 255, 0.2);
+            font-weight: 500;
         }
         
         .nav-link i {
             margin-right: 0.5rem;
+            font-size: 1.1rem;
         }
         
         .main-content {
@@ -54,15 +61,138 @@
         .card {
             border: none;
             box-shadow: 0 2px 4px rgba(0,0,0,.08);
+            border-radius: 0.5rem;
+            background-color: #fff;
+        }
+        
+        .card-header {
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+            padding: 1rem 1.25rem;
+            background-color: #fff;
+            border-bottom: 1px solid rgba(0,0,0,.125);
+        }
+        
+        .card-body {
+            padding: 1.25rem;
+            background-color: #fff;
         }
         
         .user-dropdown .btn-link {
             color: #fff;
             text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s;
+        }
+        
+        .user-dropdown .btn-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         .user-dropdown .dropdown-menu {
             margin-top: 0.5rem;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,.08);
+            border-radius: 0.5rem;
+        }
+        
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            transition: all 0.3s;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .dropdown-item i {
+            margin-right: 0.5rem;
+            width: 1.25rem;
+            text-align: center;
+        }
+        
+        .alert {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,.08);
+        }
+        
+        .btn {
+            border-radius: 0.25rem;
+            padding: 0.375rem 0.75rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        
+        .table {
+            margin-bottom: 0;
+            color: #212529;
+        }
+        
+        .table th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        
+        .table td {
+            color: #212529;
+            vertical-align: middle;
+        }
+        
+        .form-control {
+            border-radius: 0.25rem;
+            border: 1px solid #ced4da;
+            padding: 0.375rem 0.75rem;
+            transition: all 0.3s;
+            color: #212529;
+        }
+        
+        .form-control:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        /* Стили для страницы должностей */
+        .position-card {
+            background-color: #fff;
+            margin-bottom: 1rem;
+        }
+        
+        .position-card .card-title {
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+        
+        .position-card .card-text {
+            color: #6c757d;
+        }
+        
+        .position-card .badge {
+            font-size: 0.875rem;
+            padding: 0.35em 0.65em;
+        }
+        
+        .position-card .btn-group {
+            margin-top: 1rem;
+        }
+        
+        .position-card .btn-group .btn {
+            margin-right: 0.5rem;
+        }
+        
+        .position-card .btn-group .btn:last-child {
+            margin-right: 0;
         }
     </style>
     
@@ -72,7 +202,9 @@
     <!-- Верхняя панель -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">HR Система</a>
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-building"></i> HR Система
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -99,7 +231,25 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'questions' %}active{% endif %}" 
                            href="{% url 'positions:questions' %}">
-                            <i class="bi bi-question-circle"></i> Вопросы интервью
+                            <i class="bi bi-question-circle"></i> Вопросы
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'score_matrices' %}active{% endif %}" 
+                           href="{% url 'positions:score_matrices' %}">
+                            <i class="bi bi-table"></i> Матрицы
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'interview_list' %}active{% endif %}" 
+                           href="{% url 'positions:interview_list' %}">
+                            <i class="bi bi-list-ul"></i> Список интервью
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'interview_create' %}active{% endif %}" 
+                           href="{% url 'positions:interview_create' %}">
+                            <i class="bi bi-person-plus"></i> Новое интервью
                         </a>
                     </li>
                 </ul>

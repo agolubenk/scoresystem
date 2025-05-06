@@ -1,0 +1,212 @@
+{% extends 'positions/base.html' %}
+{% load positions_extras %}
+
+{% block title %}Редактирование матрицы пересчета баллов{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ matrix.name }}</h5>
+                    <div>
+                        <a href="{% url 'positions:score_matrices' %}" class="btn btn-light">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="align-middle" style="width: 200px;">Параметр \ Вопрос</th>
+                                    {% for question in matrix_data.questions %}
+                                    <th class="align-middle text-center" style="min-width: 150px;">
+                                        <small>{{ question.text|truncatechars:50 }}</small>
+                                    </th>
+                                    {% endfor %}
+                                    <th class="align-middle text-center" style="width: 100px;">Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for parameter in matrix_data.parameters %}
+                                <tr>
+                                    <td class="align-middle">
+                                        <strong>{{ parameter.name }}</strong>
+                                    </td>
+                                    {% for question in matrix_data.questions %}
+                                    <td class="align-middle text-center">
+                                        <input type="number" 
+                                               class="form-control form-control-sm matrix-cell" 
+                                               data-parameter-id="{{ parameter.id }}"
+                                               data-question-id="{{ question.id }}"
+                                               value="{{ matrix_data.cells|get_item:parameter.id|get_item:question.id }}"
+                                               step="0.01"
+                                               min="0"
+                                               max="1"
+                                               style="width: 80px; margin: 0 auto;">
+                                    </td>
+                                    {% endfor %}
+                                    <td class="align-middle text-center row-sum" data-parameter-id="{{ parameter.id }}">
+                                        <strong>{{ matrix_data.row_sums|get_item:parameter.id|default:0 }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td class="align-middle">
+                                        <strong>Сумма</strong>
+                                    </td>
+                                    {% for question in matrix_data.questions %}
+                                    <td class="align-middle text-center col-sum" data-question-id="{{ question.id }}">
+                                        <strong>{{ matrix_data.col_sums|get_item:question.id|default:0 }}</strong>
+                                    </td>
+                                    {% endfor %}
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cells = document.querySelectorAll('.matrix-cell');
+    let updateTimeout;
+
+    function getRowSum(parameterId) {
+        let sum = 0;
+        document.querySelectorAll(`.matrix-cell[data-parameter-id="${parameterId}"]`).forEach(cell => {
+            sum += parseFloat(cell.value) || 0;
+        });
+        return sum;
+    }
+
+    function getColumnSum(questionId) {
+        let sum = 0;
+        document.querySelectorAll(`.matrix-cell[data-question-id="${questionId}"]`).forEach(cell => {
+            sum += parseFloat(cell.value) || 0;
+        });
+        return sum;
+    }
+
+    function validateCellValue(cell, newValue) {
+        const parameterId = cell.dataset.parameterId;
+        const questionId = cell.dataset.questionId;
+        const oldValue = parseFloat(cell.value) || 0;
+        
+        // Проверяем, что значение не больше 1
+        if (newValue > 1) {
+            alert('Значение не может быть больше 1');
+            return false;
+        }
+
+        // Проверяем сумму по строке
+        const rowSum = getRowSum(parameterId) - oldValue + newValue;
+        if (rowSum > 1) {
+            alert('Сумма значений по строке не может быть больше 1');
+            return false;
+        }
+
+        // Проверяем сумму по столбцу
+        const colSum = getColumnSum(questionId) - oldValue + newValue;
+        if (colSum > 1) {
+            alert('Сумма значений по столбцу не может быть больше 1');
+            return false;
+        }
+
+        return true;
+    }
+
+    cells.forEach(cell => {
+        cell.addEventListener('input', function() {
+            const newValue = parseFloat(this.value) || 0;
+            
+            if (!validateCellValue(this, newValue)) {
+                this.value = this.defaultValue;
+                return;
+            }
+
+            clearTimeout(updateTimeout);
+            updateTimeout = setTimeout(() => {
+                const parameterId = this.dataset.parameterId;
+                const questionId = this.dataset.questionId;
+                const score = newValue;
+
+                fetch(`{% url 'positions:edit_score_matrix' matrix_id=matrix.id %}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        parameter_id: parameterId,
+                        question_id: questionId,
+                        score: score
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Обновляем суммы
+                        const matrixData = data.matrix_data;
+                        
+                        // Обновляем суммы по строкам
+                        Object.entries(matrixData.row_sums).forEach(([paramId, sum]) => {
+                            const rowSum = document.querySelector(`.row-sum[data-parameter-id="${paramId}"]`);
+                            if (rowSum) {
+                                rowSum.textContent = sum;
+                            }
+                        });
+                        
+                        // Обновляем суммы по столбцам
+                        Object.entries(matrixData.col_sums).forEach(([questionId, sum]) => {
+                            const colSum = document.querySelector(`.col-sum[data-question-id="${questionId}"]`);
+                            if (colSum) {
+                                colSum.textContent = sum;
+                            }
+                        });
+
+                        // Сохраняем новое значение как значение по умолчанию
+                        this.defaultValue = this.value;
+                    } else {
+                        alert('Ошибка при обновлении значения: ' + data.errors.join(', '));
+                        // Восстанавливаем предыдущее значение
+                        this.value = this.defaultValue;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при обновлении значения');
+                    // Восстанавливаем предыдущее значение
+                    this.value = this.defaultValue;
+                });
+            }, 500);
+        });
+    });
+
+    // Вспомогательная функция для получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %} 

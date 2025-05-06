@@ -1,0 +1,66 @@
+{% extends 'positions/base.html' %}
+
+{% block title %}Новое интервью{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Новое интервью</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_position" class="form-label">Специализация</label>
+                            <select name="position" id="id_position" class="form-select" required>
+                                <option value="">Выберите специализацию</option>
+                                {% for position in positions %}
+                                <option value="{{ position.id }}">{{ position.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_candidate_name" class="form-label">ФИО кандидата</label>
+                            <input type="text" name="candidate_name" id="id_candidate_name" class="form-control" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_expected_grade" class="form-label">Ожидаемый грейд</label>
+                            <select name="expected_grade" id="id_expected_grade" class="form-select" required>
+                                <option value="">Выберите грейд</option>
+                                {% for grade in grades %}
+                                <option value="{{ grade.id }}">{{ grade.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_expected_salary" class="form-label">Ожидаемая ЗП</label>
+                            <input type="number" name="expected_salary" id="id_expected_salary" class="form-control" step="0.01" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_current_grade" class="form-label">Текущий грейд (если есть)</label>
+                            <select name="current_grade" id="id_current_grade" class="form-select">
+                                <option value="">Нет текущего грейда</option>
+                                {% for grade in grades %}
+                                <option value="{{ grade.id }}">{{ grade.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Начать интервью</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

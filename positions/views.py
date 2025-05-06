@@ -1,13 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import CreateView, ListView
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.generic import CreateView, ListView, UpdateView, DetailView
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods, require_POST
 from django.utils.decorators import method_decorator
 import json
 from django.core.serializers import serialize
-from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion
+from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult
 from .forms import GradeForm
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum
+from django.urls import reverse
+import xlsxwriter
+from io import BytesIO
+from datetime import datetime
 
 class GradeListView(ListView):
     model = Grade
@@ -498,3 +504,382 @@ def delete_question(request, question_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'errors': {'form': str(e)}}, status=500)
+
+@login_required
+def score_matrices(request):
+    """Список матриц пересчета баллов"""
+    position_id = request.GET.get('position')
+    matrices = ScoreMatrix.objects.select_related('position').all()
+    
+    if position_id:
+        matrices = matrices.filter(position_id=position_id)
+    
+    # Добавляем информацию о количестве параметров и вопросов
+    for matrix in matrices:
+        matrix.parameters_count = Parameter.objects.filter(position=matrix.position).count()
+        matrix.questions_count = InterviewQuestion.objects.filter(position=matrix.position).count()
+    
+    positions = Position.objects.all()
+    selected_position = Position.objects.get(id=position_id) if position_id else None
+    
+    context = {
+        'matrices': matrices,
+        'positions': positions,
+        'selected_position': selected_position
+    }
+    return render(request, 'positions/score_matrices.html', context)
+
+@login_required
+def create_score_matrix(request):
+    """Создание новой матрицы пересчета баллов"""
+    if request.method == 'POST':
+        position_id = request.POST.get('position')
+        name = request.POST.get('name')
+        description = request.POST.get('description')
+        
+        matrix = ScoreMatrix.objects.create(
+            position_id=position_id,
+            name=name,
+            description=description
+        )
+        
+        # Создаем пустые ячейки для всех комбинаций параметров и вопросов
+        position = matrix.position
+        parameters = Parameter.objects.filter(position=position)
+        questions = InterviewQuestion.objects.filter(position=position)
+        
+        for parameter in parameters:
+            for question in questions:
+                ScoreMatrixCell.objects.create(
+                    matrix=matrix,
+                    parameter=parameter,
+                    question=question,
+                    score=0
+                )
+        
+        return redirect('positions:edit_score_matrix', matrix_id=matrix.id)
+    
+    positions = Position.objects.all()
+    return render(request, 'positions/create_score_matrix.html', {'positions': positions})
+
+@login_required
+def edit_score_matrix(request, matrix_id):
+    """Редактирование матрицы пересчета баллов"""
+    matrix = get_object_or_404(ScoreMatrix, id=matrix_id)
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        parameter_id = data.get('parameter_id')
+        question_id = data.get('question_id')
+        score = data.get('score')
+        
+        try:
+            cell = matrix.update_cell(parameter_id, question_id, score)
+            matrix_data = matrix.get_matrix_data()
+            return JsonResponse({
+                'success': True,
+                'matrix_data': matrix_data
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'errors': [str(e)]
+            })
+    
+    # Получаем все параметры и вопросы для данной специализации
+    parameters = Parameter.objects.filter(position=matrix.position)
+    questions = InterviewQuestion.objects.filter(position=matrix.position)
+    
+    # Получаем существующие ячейки
+    existing_cells = {
+        (cell.parameter_id, cell.question_id): cell.score
+        for cell in matrix.cells.all()
+    }
+    
+    # Создаем только отсутствующие ячейки
+    for parameter in parameters:
+        for question in questions:
+            if (parameter.id, question.id) not in existing_cells:
+                ScoreMatrixCell.objects.create(
+                    matrix=matrix,
+                    parameter=parameter,
+                    question=question,
+                    score=0
+                )
+    
+    # Получаем данные матрицы
+    matrix_data = matrix.get_matrix_data()
+    
+    context = {
+        'matrix': matrix,
+        'matrix_data': matrix_data
+    }
+    return render(request, 'positions/edit_score_matrix.html', context)
+
+@login_required
+def delete_score_matrix(request, matrix_id):
+    """Удаление матрицы пересчета баллов"""
+    matrix = get_object_or_404(ScoreMatrix, id=matrix_id)
+    
+    if request.method == 'POST':
+        matrix.delete()
+        return JsonResponse({'success': True})
+    
+    return JsonResponse({'success': False, 'error': 'Метод не поддерживается'})
+
+@login_required
+def toggle_matrix_active(request, matrix_id):
+    """Переключение активности матрицы"""
+    matrix = get_object_or_404(ScoreMatrix, id=matrix_id)
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        matrix.is_active = data.get('is_active', False)
+        matrix.save()
+        return JsonResponse({'success': True})
+    
+    return JsonResponse({'success': False, 'error': 'Метод не поддерживается'})
+
+class InterviewCreateView(LoginRequiredMixin, CreateView):
+    model = Interview
+    template_name = 'positions/interview_create.html'
+    fields = ['position', 'candidate_name', 'expected_grade', 'expected_salary', 'current_grade']
+    success_url = '/interview/{pk}/conduct/'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['positions'] = Position.objects.all()
+        context['grades'] = Grade.objects.all()
+        return context
+    
+    def get_success_url(self):
+        return reverse('positions:interview_conduct', kwargs={'pk': self.object.pk})
+
+class InterviewConductView(LoginRequiredMixin, UpdateView):
+    model = Interview
+    template_name = 'positions/interview_conduct.html'
+    fields = []
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        interview = self.get_object()
+        questions = InterviewQuestion.objects.filter(position=interview.position)
+        
+        # Получаем или создаем ответы для каждого вопроса
+        question_answers = []
+        for question in questions:
+            answer, created = InterviewAnswer.objects.get_or_create(
+                interview=interview,
+                question=question,
+                defaults={'score': 0}
+            )
+            question_answers.append({
+                'question': question,
+                'answer': answer
+            })
+        
+        context['question_answers'] = question_answers
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        interview = self.get_object()
+        answers = InterviewAnswer.objects.filter(interview=interview)
+        
+        # Обновляем баллы и заметки
+        for answer in answers:
+            score = request.POST.get(f'score_{answer.question.id}')
+            notes = request.POST.get(f'notes_{answer.question.id}')
+            if score is not None:
+                answer.score = int(score)
+            if notes is not None:
+                answer.notes = notes
+            answer.save()
+        
+        # Сохраняем общие заметки
+        general_notes = request.POST.get('general_notes')
+        if general_notes is not None:
+            interview.general_notes = general_notes
+            interview.save()
+        
+        # Получаем активную матрицу для позиции
+        matrix = ScoreMatrix.objects.filter(position=interview.position, is_active=True).first()
+        if not matrix:
+            matrix = ScoreMatrix.objects.filter(position=interview.position).first()
+        
+        if matrix:
+            matrix_data = matrix.get_matrix_data()
+            print("Matrix data:", matrix_data)  # Отладочная информация
+            
+            # Удаляем старые результаты
+            InterviewResult.objects.filter(interview=interview).delete()
+            
+            # Создаем новые результаты
+            for parameter in Parameter.objects.filter(position=interview.position):
+                total_score = 0
+                print(f"\nProcessing parameter: {parameter.name} (ID: {parameter.id})")  # Отладочная информация
+                
+                for answer in answers:
+                    # Получаем вес вопроса для данного параметра из матрицы
+                    weight = matrix_data['cells'].get(parameter.id, {}).get(answer.question.id, 0)
+                    print(f"Question: {answer.question.text} (ID: {answer.question.id})")  # Отладочная информация
+                    print(f"Answer score: {answer.score}, Weight: {weight}")  # Отладочная информация
+                    
+                    # Добавляем взвешенный балл к общему результату
+                    weighted_score = float(answer.score) * float(weight)
+                    total_score += weighted_score
+                    print(f"Weighted score: {weighted_score}, Running total: {total_score}")  # Отладочная информация
+                
+                # Создаем результат с округлением до 2 знаков после запятой
+                final_score = round(total_score, 2)
+                print(f"Final score for parameter {parameter.name}: {final_score}")
+                
+                InterviewResult.objects.create(
+                    interview=interview,
+                    parameter=parameter,
+                    score=final_score
+                )
+        
+        return redirect('positions:interview_result', pk=interview.pk)
+
+class InterviewResultView(LoginRequiredMixin, DetailView):
+    model = Interview
+    template_name = 'positions/interview_result.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        interview = self.get_object()
+        
+        # Получаем результаты по параметрам
+        results = InterviewResult.objects.filter(interview=interview)
+        
+        # Округляем все баллы до 2 знаков после запятой
+        for result in results:
+            result.score = round(float(result.score), 2)
+        
+        total_score = round(float(results.aggregate(total=Sum('score'))['total'] or 0), 2)
+        
+        # Определяем грейд на основе суммы баллов
+        position_grades = PositionGrade.objects.filter(
+            position=interview.position
+        ).select_related('grade').order_by('-grade__order')
+        
+        print(f"\nDebug info for interview {interview.id}:")
+        print(f"Total score: {total_score}")
+        print(f"Current grade: {interview.current_grade}")
+        
+        recommended_grade = None
+        grade_change = None
+        
+        # Ищем первый грейд, для которого набранных баллов достаточно
+        for position_grade in position_grades:
+            print(f"\nChecking grade {position_grade.grade.name}:")
+            print(f"Confirmation points: {position_grade.confirmation_points}")
+            print(f"Promotion points: {position_grade.promotion_points}")
+            
+            if total_score >= position_grade.confirmation_points:
+                recommended_grade = position_grade.grade
+                if interview.current_grade:
+                    if total_score >= position_grade.promotion_points:
+                        grade_change = "повышение"
+                    else:
+                        grade_change = "подтверждение"
+                print(f"Selected grade: {recommended_grade.name}")
+                print(f"Grade change: {grade_change}")
+                break
+        
+        context.update({
+            'results': results,
+            'total_score': total_score,
+            'grade': recommended_grade,
+            'grade_change': grade_change,
+            'answers': InterviewAnswer.objects.filter(interview=interview)
+        })
+        
+        print("\nContext data:")
+        print(f"Grade in context: {context.get('grade')}")
+        print(f"Grade change in context: {context.get('grade_change')}")
+        
+        return context
+
+class InterviewListView(LoginRequiredMixin, ListView):
+    model = Interview
+    template_name = 'positions/interview_list.html'
+    context_object_name = 'interviews'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        position_id = self.request.GET.get('position')
+        if position_id:
+            queryset = queryset.filter(position_id=position_id)
+        return queryset.select_related('position', 'expected_grade', 'current_grade')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['positions'] = Position.objects.all()
+        context['selected_position'] = self.request.GET.get('position')
+        return context
+
+@login_required
+def download_interview_results(request, pk):
+    """Скачивание результатов интервью в Excel"""
+    interview = get_object_or_404(Interview, pk=pk)
+    results = InterviewResult.objects.filter(interview=interview)
+    
+    # Создаем Excel файл в памяти
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output)
+    worksheet = workbook.add_worksheet()
+    
+    # Форматы
+    header_format = workbook.add_format({
+        'bold': True,
+        'bg_color': '#198754',
+        'font_color': 'white',
+        'border': 1
+    })
+    
+    cell_format = workbook.add_format({
+        'border': 1,
+        'align': 'center'
+    })
+    
+    # Заголовки
+    headers = ['Параметр', 'Балл']
+    for col, header in enumerate(headers):
+        worksheet.write(0, col, header, header_format)
+    
+    # Данные
+    for row, result in enumerate(results, start=1):
+        worksheet.write(row, 0, result.parameter.name, cell_format)
+        worksheet.write(row, 1, result.score, cell_format)
+    
+    # Общий балл
+    total_row = len(results) + 2
+    worksheet.write(total_row, 0, 'Общий балл', header_format)
+    worksheet.write(total_row, 1, sum(r.score for r in results), cell_format)
+    
+    # Рекомендуемый грейд
+    if interview.expected_grade:
+        grade_row = total_row + 1
+        worksheet.write(grade_row, 0, 'Рекомендуемый грейд', header_format)
+        worksheet.write(grade_row, 1, interview.expected_grade.name, cell_format)
+    
+    # Настройка ширины столбцов
+    worksheet.set_column('A:A', 30)
+    worksheet.set_column('B:B', 15)
+    
+    workbook.close()
+    output.seek(0)
+    
+    # Формируем имя файла
+    filename = f'interview_results_{interview.candidate_name}_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    
+    # Создаем HTTP ответ
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response

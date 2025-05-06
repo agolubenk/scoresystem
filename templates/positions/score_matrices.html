@@ -1,0 +1,155 @@
+{% extends 'positions/base.html' %}
+{% load positions_extras %}
+
+{% block title %}Матрицы пересчета баллов{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Матрицы пересчета баллов</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="dropdown me-3">
+                            <button class="btn btn-light dropdown-toggle" type="button" id="positionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                {% if selected_position %}
+                                    {{ selected_position }}
+                                {% else %}
+                                    Все специализации
+                                {% endif %}
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="positionDropdown">
+                                <li><a class="dropdown-item" href="{% url 'positions:score_matrices' %}">Все специализации</a></li>
+                                {% for position in positions %}
+                                <li><a class="dropdown-item" href="{% url 'positions:score_matrices' %}?position={{ position.id }}">{{ position.name }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" id="showInactiveMatrices" checked>
+                            <label class="form-check-label text-white" for="showInactiveMatrices">Показать неактивные</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if matrices %}
+                    <div class="row">
+                        {% for matrix in matrices %}
+                        <div class="col-md-6 mb-4 matrix-card" data-is-active="{{ matrix.is_active|yesno:'true,false' }}">
+                            <div class="card h-100 {% if not matrix.is_active %}border-danger{% endif %}">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="card-title mb-0">{{ matrix.name }}</h6>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input toggle-active" 
+                                               type="checkbox" 
+                                               data-matrix-id="{{ matrix.id }}"
+                                               {% if matrix.is_active %}checked{% endif %}>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-list-check"></i> Параметров: {{ matrix.parameters_count }}<br>
+                                            <i class="bi bi-question-circle"></i> Вопросов: {{ matrix.questions_count }}
+                                        </small>
+                                    </p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock-history"></i> Создано: {{ matrix.created_at|date:"d.m.Y H:i" }} | Обновлено: {{ matrix.updated_at|date:"d.m.Y H:i" }}
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{% url 'positions:edit_score_matrix' matrix_id=matrix.id %}" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-pencil"></i> Редактировать
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Матрицы пересчета баллов не найдены. Создайте новую специализацию для автоматического создания матрицы.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Переключение активности матрицы
+    document.querySelectorAll('.toggle-active').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const matrixId = this.dataset.matrixId;
+            const isActive = this.checked;
+            
+            fetch(`{% url 'positions:toggle_matrix_active' matrix_id=0 %}`.replace('0', matrixId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    is_active: isActive
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    this.checked = !isActive;
+                    alert('Ошибка при изменении статуса матрицы');
+                }
+                // Обновляем стили карточки
+                const card = this.closest('.matrix-card');
+                card.dataset.isActive = isActive;
+                const cardBody = this.closest('.card');
+                if (!isActive) {
+                    cardBody.classList.add('border-danger');
+                } else {
+                    cardBody.classList.remove('border-danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.checked = !isActive;
+                alert('Произошла ошибка при обновлении статуса');
+            });
+        });
+    });
+
+    // Фильтрация неактивных матриц
+    const showInactiveCheckbox = document.getElementById('showInactiveMatrices');
+    showInactiveCheckbox.addEventListener('change', function() {
+        const showInactive = this.checked;
+        document.querySelectorAll('.matrix-card[data-is-active="false"]').forEach(card => {
+            card.style.display = showInactive ? 'block' : 'none';
+        });
+    });
+
+    // Функция для получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %} 
