@@ -1,0 +1,26 @@
+{% extends 'positions/base.html' %}
+{% block title %}Резюме кандидата: {{ candidate.full_name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h3>Резюме кандидата: {{ candidate.full_name }}</h3>
+    {% if resume_exists %}
+        <iframe src="{{ candidate.resume.url }}" width="100%" height="800px" style="border:none;"></iframe>
+        <div class="mt-3">
+            <a href="javascript:window.close()" class="btn btn-secondary">Закрыть</a>
+        </div>
+    {% else %}
+        <div class="alert alert-warning mt-4">Резюме не загружено или файл отсутствует на сервере.</div>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="id_resume" class="form-label">Загрузить PDF-файл резюме</label>
+                <input type="file" name="resume" id="id_resume" class="form-control" accept="application/pdf" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Загрузить</button>
+        </form>
+        <div class="mt-3">
+            <a href="javascript:window.close()" class="btn btn-secondary">Закрыть</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

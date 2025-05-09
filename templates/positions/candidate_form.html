@@ -116,7 +116,7 @@
                                     </div>
                                 </div>
                                 {% if form.instance.resume %}
-                                <button type="button" class="pdf-preview-btn" onclick="previewPdf('{% url 'positions:candidate_resume_preview' form.instance.pk %}')">Предпросмотр</button>
+                                <button type="button" class="pdf-preview-btn" onclick="window.open('{% url 'positions:candidate_resume_view' form.instance.pk %}', '_blank')">Предпросмотр</button>
                                 {% endif %}
                             </div>
                             {{ form.resume }}

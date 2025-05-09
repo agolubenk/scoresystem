@@ -60,7 +60,7 @@
                     <td>{{ candidate.desired_position.name }}</td>
                     <td>
                         {% if candidate.resume %}
-                        <button class="pdf-preview-btn" onclick="previewPdf('{% url 'positions:candidate_resume_preview' candidate.pk %}')">Предпросмотр</button>
+                        <button class="pdf-preview-btn" onclick="window.open('{% url 'positions:candidate_resume_view' candidate.pk %}', '_blank')">Предпросмотр</button>
                         {% endif %}
                     </td>
                     <td class="text-end">

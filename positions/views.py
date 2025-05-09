@@ -1141,6 +1141,18 @@ class CandidateResumePreviewView(View):
         candidate = get_object_or_404(Candidate, pk=pk)
         if not candidate.resume:
             return HttpResponse('Резюме не найдено', status=404)
-        response = FileResponse(candidate.resume, content_type='application/pdf')
+        file_path = candidate.resume.path
+        if not os.path.exists(file_path):
+            return HttpResponse('Файл не найден на сервере', status=404)
+        response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="{candidate.resume.name}"'
         return response
+
+def candidate_resume_view(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    resume_exists = candidate.resume and candidate.resume.name and os.path.exists(candidate.resume.path)
+    if request.method == 'POST' and request.FILES.get('resume'):
+        resume = request.FILES['resume']
+        candidate.resume.save(resume.name, resume, save=True)
+        return redirect('positions:candidate_resume_view', pk=pk)
+    return render(request, 'positions/candidate_resume_view.html', {'candidate': candidate, 'resume_exists': resume_exists})

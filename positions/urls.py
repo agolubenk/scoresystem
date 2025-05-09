@@ -46,4 +46,5 @@ urlpatterns = [
     path('candidates/<int:pk>/edit/', views.CandidateUpdateView.as_view(), name='candidate_edit'),
     path('candidates/<int:pk>/delete/', views.CandidateDeleteView.as_view(), name='candidate_delete'),
     path('candidates/<int:pk>/resume-preview/', views.CandidateResumePreviewView.as_view(), name='candidate_resume_preview'),
+    path('candidates/<int:pk>/resume-view/', views.candidate_resume_view, name='candidate_resume_view'),
 ] 
