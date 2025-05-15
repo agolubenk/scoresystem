@@ -25,8 +25,41 @@
                         </div>
                         
                         <div class="mb-3">
+                            <label for="id_candidate_select" class="form-label">Кандидат</label>
+                            <div class="input-group">
+                                <select id="id_candidate_select" class="form-select" name="candidate_select">
+                                    <option value="">Выберите из списка...</option>
+                                    {% for c in candidates %}
+                                    <option value="{{ c.id }}" data-full_name="{{ c.full_name }}" data-email="{{ c.email }}" data-phone="{{ c.phone }}" data-telegram="{{ c.telegram }}" data-desired_position="{{ c.desired_position.id }}">{{ c.full_name }}{% if c.email %} ({{ c.email }}){% endif %}{% if c.phone %} [{{ c.phone }}]{% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-outline-primary" id="add-candidate-btn">+ Новый</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label for="id_candidate_name" class="form-label">ФИО кандидата</label>
                             <input type="text" name="candidate_name" id="id_candidate_name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email</label>
+                            <input type="email" name="email" id="id_email" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_phone" class="form-label">Телефон</label>
+                            <input type="tel" name="phone" id="id_phone" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_telegram" class="form-label">Telegram</label>
+                            <input type="text" name="telegram" id="id_telegram" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_desired_position" class="form-label">Желаемая должность</label>
+                            <select name="desired_position" id="id_desired_position" class="form-select">
+                                <option value="">Выберите должность</option>
+                                {% for position in positions %}
+                                <option value="{{ position.id }}">{{ position.name }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         
                         <div class="mb-3">
@@ -62,5 +95,41 @@
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const candidateSelect = document.getElementById('id_candidate_select');
+    if (candidateSelect) {
+        candidateSelect.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            document.getElementById('id_candidate_name').value = selected.getAttribute('data-full_name') || '';
+            document.getElementById('id_email').value = selected.getAttribute('data-email') || '';
+            document.getElementById('id_phone').value = selected.getAttribute('data-phone') || '';
+            document.getElementById('id_telegram').value = selected.getAttribute('data-telegram') || '';
+            document.getElementById('id_desired_position').value = selected.getAttribute('data-desired_position') || '';
+        });
+    }
+    document.getElementById('add-candidate-btn').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('addCandidateModal'));
+        modal.show();
+    });
+});
+</script>
+<!-- Модальное окно для создания кандидата -->
+<div class="modal fade" id="addCandidateModal" tabindex="-1" aria-labelledby="addCandidateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addCandidateModalLabel">Новый кандидат</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe src="{% url 'positions:candidate_create' %}?popup=1" style="width:100%;height:80vh;border:none;"></iframe>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %} 

@@ -146,14 +146,14 @@
                     </td>
                     <td class="test-type-cell">
                         <div class="d-flex align-items-center">
-                            <select class="form-select" data-field="test_type" {% if question.question_type != 'test' %}disabled{% endif %}>
-                                <option value="">-</option>
+                        <select class="form-select" data-field="test_type" {% if question.question_type != 'test' %}disabled{% endif %}>
+                            <option value="">-</option>
                                 {% for value, label in test_types %}
-                                <option value="{{ value }}" {% if value == question.test_type %}selected{% endif %}>
-                                    {{ label }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <option value="{{ value }}" {% if value == question.test_type %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
                             <button type="button" class="btn btn-warning btn-sm ms-2 edit-test-type" data-bs-toggle="modal" data-bs-target="#testTypeModal">
                                 <i class="bi bi-pencil"></i>
                             </button>
@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const testTypeValue = questionTypeValue === 'test' ? testType.value : '';
         const positionValue = questionPosition.value;
         const isActiveValue = isActive.checked;
-
+        
         if (!questionText) {
             alert('Пожалуйста, введите текст вопроса');
             return;
@@ -337,14 +337,14 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Пожалуйста, выберите тип тестового задания');
             return;
         }
-
+        
         const data = {
             text: questionText,
             question_type: questionTypeValue,
             test_type: testTypeValue,
             is_active: isActiveValue
         };
-
+        
         fetch(`/questions/create/?position=${encodeURIComponent(positionValue)}`, {
             method: 'POST',
             headers: {

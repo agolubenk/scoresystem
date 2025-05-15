@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Grade, Position, PositionGrade, Parameter, ParameterDescription, InterviewQuestion, Candidate
+from .models import Grade, Position, PositionGrade, Parameter, ParameterDescription, InterviewQuestion, Candidate, CandidateFile, CandidateTask
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
@@ -73,3 +73,9 @@ class CandidateAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         form.base_fields['desired_position'].queryset = Position.objects.filter(is_active=True)
         return form
+
+@admin.register(CandidateTask)
+class CandidateTaskAdmin(admin.ModelAdmin):
+    list_display = ('title', 'candidate', 'due_date', 'is_completed', 'created_at')
+    list_filter = ('is_completed', 'due_date', 'candidate')
+    search_fields = ('title', 'description', 'candidate__full_name')

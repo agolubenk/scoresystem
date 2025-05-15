@@ -46,7 +46,6 @@
                     <th>Телефон</th>
                     <th>Telegram</th>
                     <th>Желаемая должность</th>
-                    <th>Резюме</th>
                     <th></th>
                 </tr>
             </thead>
@@ -54,22 +53,16 @@
                 {% for candidate in candidates %}
                 <tr>
                     <td><a href="{% url 'positions:candidate_detail' candidate.pk %}">{{ candidate.full_name }}</a></td>
-                    <td>{{ candidate.email }}</td>
-                    <td>{{ candidate.phone }}</td>
+                    <td>{% if candidate.email %}<a href="mailto:{{ candidate.email }}">{{ candidate.email }}</a>{% endif %}</td>
+                    <td><span class="phone-flag" data-phone="{{ candidate.phone|default:'' }}"></span>{% if candidate.phone %}<a href="tel:{{ candidate.phone }}">{{ candidate.phone }}</a>{% endif %}</td>
                     <td>{% if candidate.telegram %}<a href="{{ candidate.get_telegram_link }}" target="_blank">@{{ candidate.get_telegram_username }}</a>{% endif %}</td>
                     <td>{{ candidate.desired_position.name }}</td>
-                    <td>
-                        {% if candidate.resume %}
-                        <button class="pdf-preview-btn" onclick="window.open('{% url 'positions:candidate_resume_view' candidate.pk %}', '_blank')">Предпросмотр</button>
-                        {% endif %}
-                    </td>
                     <td class="text-end">
-                        <a href="{% url 'positions:candidate_edit' candidate.pk %}" class="btn btn-sm btn-outline-primary">Редактировать</a>
                         <a href="{% url 'positions:candidate_delete' candidate.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="text-center">Нет кандидатов</td></tr>
+                <tr><td colspan="6" class="text-center">Нет кандидатов</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -109,15 +102,64 @@
 
 {% block extra_js %}
 <script>
-function previewPdf(url) {
-    var modalEl = document.getElementById('pdfPreviewModal');
-    if (window.bootstrap && modalEl) {
-        var modal = new bootstrap.Modal(modalEl);
-        document.getElementById('pdfViewer').src = url;
-        modal.show();
-    } else {
-        window.open(url, '_blank');
+// === Флаги и страны по телефонным кодам ===
+const countryPhoneData = [
+    { code: '+1', flag: '🇺🇸', name: 'США/Канада' },
+    { code: '+7', flag: '🇷🇺', name: 'Россия' },
+    { code: '+375', flag: '🇧🇾', name: 'Беларусь' },
+    { code: '+380', flag: '🇺🇦', name: 'Украина' },
+    { code: '+48', flag: '🇵🇱', name: 'Польша' },
+    { code: '+371', flag: '🇱🇻', name: 'Латвия' },
+    { code: '+370', flag: '🇱🇹', name: 'Литва' },
+    { code: '+372', flag: '🇪🇪', name: 'Эстония' },
+    { code: '+49', flag: '🇩🇪', name: 'Германия' },
+    { code: '+420', flag: '🇨🇿', name: 'Чехия' },
+    { code: '+44', flag: '🇬🇧', name: 'Великобритания' },
+    { code: '+33', flag: '🇫🇷', name: 'Франция' },
+    { code: '+39', flag: '🇮🇹', name: 'Италия' },
+    { code: '+34', flag: '🇪🇸', name: 'Испания' },
+    { code: '+81', flag: '🇯🇵', name: 'Япония' },
+    { code: '+86', flag: '🇨🇳', name: 'Китай' },
+    { code: '+91', flag: '🇮🇳', name: 'Индия' },
+    { code: '+61', flag: '🇦🇺', name: 'Австралия' },
+    { code: '+82', flag: '🇰🇷', name: 'Южная Корея' },
+    { code: '+90', flag: '🇹🇷', name: 'Турция' },
+    { code: '+351', flag: '🇵🇹', name: 'Португалия' },
+    { code: '+36', flag: '🇭🇺', name: 'Венгрия' },
+    { code: '+43', flag: '🇦🇹', name: 'Австрия' },
+    { code: '+31', flag: '🇳🇱', name: 'Нидерланды' },
+    { code: '+32', flag: '🇧ельгия' },
+    { code: '+358', flag: '🇫🇮', name: 'Финляндия' },
+    { code: '+46', flag: '🇸🇪', name: 'Швеция' },
+    { code: '+47', flag: '🇳🇴', name: 'Норвегия' },
+    { code: '+45', flag: '🇩🇰', name: 'Дания' },
+    { code: '+420', flag: '🇨🇿', name: 'Чехия' },
+    { code: '+421', flag: '🇸🇰', name: 'Словакия' },
+    { code: '+386', flag: '🇸🇮', name: 'Словения' },
+    { code: '+385', flag: '🇭🇷', name: 'Хорватия' },
+    { code: '+357', flag: '🇨🇾', name: 'Кипр' },
+    { code: '+30', flag: '🇬🇷', name: 'Греция' },
+    { code: '+40', flag: '🇷🇴', name: 'Румыния' },
+];
+countryPhoneData.sort((a, b) => b.code.length - a.code.length);
+function getCountryData(phone) {
+    if (!phone) return { flag: '', name: '' };
+    phone = phone.replace(/\s|\(|\)/g, '');
+    for (const item of countryPhoneData) {
+        if (phone.startsWith(item.code)) {
+            return item;
+        }
     }
+    return { flag: '', name: '' };
 }
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.phone-flag').forEach(function(span) {
+        const phone = span.dataset.phone;
+        const { flag } = getCountryData(phone);
+        if (flag) {
+            span.innerHTML = `<span style="font-size:1.3em;vertical-align:middle;">${flag}</span> `;
+        }
+    });
+});
 </script>
 {% endblock %} 

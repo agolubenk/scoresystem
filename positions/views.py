@@ -5,7 +5,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.utils.decorators import method_decorator
 import json
 from django.core.serializers import serialize
-from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate
+from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate, TestAnswer, CandidateFile, CandidateTask, CandidateChangeHistory
 from .forms import GradeForm, CandidateForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -20,6 +20,9 @@ from django.views.decorators.csrf import csrf_exempt
 import os
 from dotenv import load_dotenv
 from django.views import View
+import re
+import phonenumbers
+from django.forms.models import model_to_dict
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -661,6 +664,7 @@ class InterviewCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context['positions'] = Position.objects.all()
         context['grades'] = Grade.objects.all()
+        context['candidates'] = Candidate.objects.all()
         return context
     
     def get_success_url(self):
@@ -1156,3 +1160,239 @@ def candidate_resume_view(request, pk):
         candidate.resume.save(resume.name, resume, save=True)
         return redirect('positions:candidate_resume_view', pk=pk)
     return render(request, 'positions/candidate_resume_view.html', {'candidate': candidate, 'resume_exists': resume_exists})
+
+@require_POST
+@login_required
+def update_test_template(request, question_id):
+    try:
+        question = InterviewQuestion.objects.get(id=question_id)
+        if question.question_type != 'test':
+            return JsonResponse({'success': False, 'error': 'Это не тестовый вопрос'})
+        
+        # Обновляем текст вопроса
+        question.text = request.POST.get('text')
+        question.test_type = request.POST.get('test_type')
+        question.save()
+        
+        # Обновляем варианты ответов
+        answers = request.POST.getlist('answers[]')
+        is_correct = request.POST.getlist('is_correct[]')
+        
+        # Удаляем старые варианты ответов
+        question.answers.all().delete()
+        
+        # Создаем новые варианты ответов
+        for i, answer_text in enumerate(answers):
+            if answer_text.strip():  # Пропускаем пустые ответы
+                TestAnswer.objects.create(
+                    question=question,
+                    text=answer_text,
+                    is_correct=str(i) in is_correct,
+                    order=i
+                )
+        
+        return JsonResponse({'success': True})
+    except InterviewQuestion.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Вопрос не найден'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@require_http_methods(["POST"])
+def candidate_files_upload(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    files = request.FILES.getlist('files')
+    errors = []
+    uploaded = []
+    for f in files:
+        try:
+            CandidateFile.objects.create(candidate=candidate, file=f)
+            uploaded.append(f.name)
+        except Exception as e:
+            errors.append(f"{f.name}: {str(e)}")
+    if errors:
+        return JsonResponse({'success': False, 'uploaded': uploaded, 'errors': errors, 'error': 'Не удалось загрузить некоторые файлы'})
+    return JsonResponse({'success': True, 'uploaded': uploaded})
+
+def candidate_detail(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    positions = Position.objects.all()
+    files = []
+    for f in candidate.files.all():
+        fname = f.file.name.split('/')[-1]
+        ext = fname.lower().split('.')[-1] if '.' in fname else ''
+        files.append({'id': f.id, 'url': f.file.url, 'name': fname, 'ext': ext, 'uploaded_at': f.uploaded_at})
+
+    # Получаем все интервью кандидата
+    interviews_qs = Interview.objects.filter(
+        candidate_name=candidate.full_name
+    ).select_related('position', 'expected_grade').order_by('-created_at')
+
+    # Для каждой карточки интервью собираем рекомендуемый грейд и общий балл
+    interviews = []
+    for interview in interviews_qs:
+        # Общий балл
+        results = InterviewResult.objects.filter(interview=interview)
+        total_score = round(float(results.aggregate(total=Sum('score'))['total'] or 0), 2)
+        # Рекомендованный грейд
+        position_grades = PositionGrade.objects.filter(
+            position=interview.position
+        ).select_related('grade').order_by('-grade__order')
+        recommended_grade = None
+        for position_grade in position_grades:
+            if total_score >= position_grade.confirmation_points:
+                recommended_grade = position_grade.grade
+                break
+        interviews.append({
+            'type': 'interview',
+            'id': interview.pk,
+            'position': interview.position,
+            'expected_grade': interview.expected_grade,
+            'recommended_grade': recommended_grade,
+            'total_score': total_score,
+            'created_at': interview.created_at,
+        })
+
+    # История изменений кандидата
+    change_history = [
+        {
+            'type': 'change',
+            'field': ch.field,
+            'old_value': ch.old_value,
+            'new_value': ch.new_value,
+            'changed_at': ch.changed_at,
+        }
+        for ch in candidate.change_history.all()
+    ]
+
+    # Событие создания кандидата
+    created_event = {
+        'type': 'created',
+        'created_at': candidate.created_at,
+    }
+
+    # Объединяем все события и сортируем по дате
+    history_events = [created_event]
+    for ch in change_history:
+        ch['date'] = ch['changed_at']
+        history_events.append(ch)
+    for interview in interviews:
+        interview['date'] = interview['created_at']
+        history_events.append(interview)
+    history_events = sorted(history_events, key=lambda x: x.get('date') or x.get('created_at'))
+
+    return render(request, 'positions/candidate_detail.html', {
+        'candidate': candidate,
+        'positions': positions,
+        'candidate_files': files,
+        'interviews': interviews,  # для обратной совместимости, можно убрать позже
+        'change_history': change_history,  # для обратной совместимости, можно убрать позже
+        'history_events': history_events,
+    })
+
+@require_http_methods(["POST"])
+def candidate_file_delete(request, file_id):
+    file = get_object_or_404(CandidateFile, id=file_id)
+    file.file.delete(save=False)
+    file.delete()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["POST"])
+def candidate_update(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    field = None
+    value = None
+
+    # Определяем, какое поле редактируется
+    for f in ['email', 'phone', 'telegram', 'desired_position', 'notes']:
+        if f in request.POST:
+            field = f
+            value = request.POST.get(f)
+            break
+    if 'resume' in request.FILES:
+        field = 'resume'
+        value = request.FILES['resume']
+
+    if not field:
+        return JsonResponse({'success': False, 'error': 'Нет данных для обновления'})
+
+    # Валидация и обновление
+    try:
+        old_value = None
+        if field == 'email':
+            old_value = candidate.email
+            if value and '@' not in value:
+                return JsonResponse({'success': False, 'error': 'Некорректный email'})
+            candidate.email = value
+        elif field == 'phone':
+            old_value = candidate.phone
+            if value:
+                try:
+                    phone_obj = phonenumbers.parse(value, None)
+                    if not phonenumbers.is_valid_number(phone_obj):
+                        return JsonResponse({'success': False, 'error': 'Некорректный номер телефона для страны'})
+                except Exception as e:
+                    return JsonResponse({'success': False, 'error': f'Ошибка валидации номера: {str(e)}'})
+            candidate.phone = value
+        elif field == 'telegram':
+            old_value = candidate.telegram
+            candidate.telegram = value
+        elif field == 'desired_position':
+            old_value = candidate.desired_position.name if candidate.desired_position else None
+            if value:
+                try:
+                    candidate.desired_position = Position.objects.get(pk=value)
+                except Position.DoesNotExist:
+                    return JsonResponse({'success': False, 'error': 'Должность не найдена'})
+            else:
+                candidate.desired_position = None
+        elif field == 'notes':
+            old_value = candidate.notes
+            candidate.notes = value
+        elif field == 'resume':
+            old_value = candidate.resume.name if candidate.resume else None
+            candidate.resume = value
+        else:
+            return JsonResponse({'success': False, 'error': 'Неизвестное поле'})
+        candidate.save()
+        # Сохраняем историю изменений
+        if field != 'resume':  # Не сохраняем историю для файла
+            CandidateChangeHistory.objects.create(
+                candidate=candidate,
+                field=field,
+                old_value=old_value,
+                new_value=value if field != 'desired_position' else (candidate.desired_position.name if candidate.desired_position else None)
+            )
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@require_http_methods(["GET", "POST"])
+def candidate_tasks(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    if request.method == "GET":
+        tasks = candidate.tasks.order_by('-created_at')
+        return JsonResponse({
+            'tasks': [
+                {
+                    'id': t.id,
+                    'title': t.title,
+                    'description': t.description,
+                    'due_date': t.due_date.strftime('%Y-%m-%d') if t.due_date else '',
+                    'is_completed': t.is_completed,
+                } for t in tasks
+            ]
+        })
+    elif request.method == "POST":
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        due_date = data.get('due_date')
+        if not title:
+            return JsonResponse({'success': False, 'error': 'Название задачи обязательно'}, status=400)
+        task = CandidateTask.objects.create(
+            candidate=candidate,
+            title=title,
+            description=description,
+            due_date=due_date or None
+        )
+        return JsonResponse({'success': True, 'task': model_to_dict(task)})

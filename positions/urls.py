@@ -47,4 +47,10 @@ urlpatterns = [
     path('candidates/<int:pk>/delete/', views.CandidateDeleteView.as_view(), name='candidate_delete'),
     path('candidates/<int:pk>/resume-preview/', views.CandidateResumePreviewView.as_view(), name='candidate_resume_preview'),
     path('candidates/<int:pk>/resume-view/', views.candidate_resume_view, name='candidate_resume_view'),
+    path('test-template/<int:question_id>/update/', views.update_test_template, name='update_test_template'),
+    path('candidate/<int:pk>/', views.candidate_detail, name='candidate_detail'),
+    path('candidate/<int:pk>/update/', views.candidate_update, name='candidate_update'),
+    path('candidate/<int:pk>/files/upload/', views.candidate_files_upload, name='candidate_files_upload'),
+    path('candidate/file/<int:file_id>/delete/', views.candidate_file_delete, name='candidate_file_delete'),
+    path('candidate/<int:pk>/tasks/', views.candidate_tasks, name='candidate_tasks'),
 ] 

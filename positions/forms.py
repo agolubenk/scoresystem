@@ -9,7 +9,7 @@ class GradeForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'positions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'order': forms.NumberInput(attrs={'class': 'form-control'}),
-        }
+        } 
 
 class CandidateForm(forms.ModelForm):
     telegram = forms.CharField(

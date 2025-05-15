@@ -8,23 +8,496 @@
                 <div class="card-body">
                     <h3 class="card-title mb-3">{{ candidate.full_name }}</h3>
                     <ul class="list-group list-group-flush mb-3">
-                        <li class="list-group-item"><b>Email:</b> {{ candidate.email|default:'—' }}</li>
-                        <li class="list-group-item"><b>Телефон:</b> {{ candidate.phone|default:'—' }}</li>
-                        <li class="list-group-item"><b>Telegram:</b> {% if candidate.telegram %}<a href="{{ candidate.get_telegram_link }}" target="_blank">@{{ candidate.get_telegram_username }}</a>{% else %}—{% endif %}</li>
-                        <li class="list-group-item"><b>Желаемая должность:</b> {{ candidate.desired_position.name|default:'—' }}</li>
-                        <li class="list-group-item"><b>Резюме (PDF):</b> {% if candidate.resume %}<a href="{{ candidate.resume.url }}" target="_blank">Открыть</a>{% else %}—{% endif %}</li>
-                        <li class="list-group-item"><b>Заметки:</b><br>{{ candidate.notes|linebreaks|default:'—' }}</li>
+                        <!-- Email -->
+                        <li class="list-group-item d-flex align-items-center justify-content-between">
+                            <div>
+                                <b>Email:</b>
+                                <span class="editable-field" data-field="email" id="email-view">
+                                    {% if candidate.email %}
+                                        <a href="mailto:{{ candidate.email }}">{{ candidate.email }}</a>
+                                    {% else %}—{% endif %}
+                                </span>
+                                <form class="edit-inline-form d-none" id="email-form">
+                                    <input type="email" class="form-control form-control-sm d-inline w-auto" name="email" value="{{ candidate.email|default:'' }}">
+                                    <span class="text-danger small d-block mt-1" id="email-error"></span>
+                                </form>
+                            </div>
+                            <button class="btn btn-link p-0 edit-icon-btn" data-field="email" tabindex="-1"><i class="bi bi-pencil"></i></button>
+                        </li>
+                        <!-- Телефон -->
+                        <li class="list-group-item d-flex align-items-center justify-content-between">
+                            <div>
+                                <b>Телефон:</b>
+                                <span class="editable-field" data-field="phone" id="phone-view">
+                                    {% if candidate.phone %}
+                                        <a href="tel:{{ candidate.phone }}">{{ candidate.phone }}</a>
+                                    {% else %}—{% endif %}
+                                </span>
+                                <form class="edit-inline-form d-none" id="phone-form">
+                                    <input type="tel" class="form-control form-control-sm d-inline w-auto" name="phone" value="{{ candidate.phone|default:'' }}">
+                                    <span class="text-danger small d-block mt-1" id="phone-error"></span>
+                                </form>
+                            </div>
+                            <button class="btn btn-link p-0 edit-icon-btn" data-field="phone" tabindex="-1"><i class="bi bi-pencil"></i></button>
+                        </li>
+                        <!-- Telegram -->
+                        <li class="list-group-item d-flex align-items-center justify-content-between">
+                            <div>
+                                <b>Telegram:</b>
+                                <span class="editable-field" data-field="telegram" id="telegram-view">
+                                    {% if candidate.telegram %}
+                                        <a href="{{ candidate.get_telegram_link }}" target="_blank">@{{ candidate.get_telegram_username }}</a>
+                                    {% else %}—{% endif %}
+                                </span>
+                                <form class="edit-inline-form d-none" id="telegram-form">
+                                    <input type="text" class="form-control form-control-sm d-inline w-auto" name="telegram" value="{{ candidate.telegram|default:'' }}">
+                                    <span class="text-danger small d-block mt-1" id="telegram-error"></span>
+                                </form>
+                            </div>
+                            <button class="btn btn-link p-0 edit-icon-btn" data-field="telegram" tabindex="-1"><i class="bi bi-pencil"></i></button>
+                        </li>
+                        <!-- Желаемая должность -->
+                        <li class="list-group-item d-flex align-items-center justify-content-between">
+                            <div>
+                                <b>Желаемая должность:</b>
+                                <span class="editable-field" data-field="desired_position" id="desired_position-view">{{ candidate.desired_position.name|default:'—' }}</span>
+                                <form class="edit-inline-form d-none" id="desired_position-form">
+                                    <select class="form-select form-select-sm d-inline w-auto" name="desired_position">
+                                        <option value="">Выберите должность</option>
+                                        {% for position in positions %}
+                                        <option value="{{ position.id }}" {% if candidate.desired_position.id == position.id %}selected{% endif %}>{{ position.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <span class="text-danger small d-block mt-1" id="desired_position-error"></span>
+                                </form>
+                            </div>
+                            <button class="btn btn-link p-0 edit-icon-btn" data-field="desired_position" tabindex="-1"><i class="bi bi-pencil"></i></button>
+                        </li>
+                        <!-- Заметки -->
+                        <li class="list-group-item d-flex align-items-center justify-content-between">
+                            <div class="w-100">
+                                <b>Заметки:</b><br>
+                                <span class="editable-field" data-field="notes" id="notes-view">
+                                    {% if candidate.notes %}
+                                        <blockquote class="blockquote small" style="font-size:0.9em;"><em>{{ candidate.notes|linebreaksbr }}</em></blockquote>
+                                    {% else %}<span class="text-muted small">—</span>{% endif %}
+                                </span>
+                                <form class="edit-inline-form d-none" id="notes-form">
+                                    <textarea class="form-control form-control-sm d-inline w-100 small" name="notes" rows="1" style="font-size:0.9em;min-height:32px;max-height:60px;">{{ candidate.notes|default:'' }}</textarea>
+                                    <span class="text-danger small d-block mt-1" id="notes-error"></span>
+                                </form>
+                            </div>
+                            <button class="btn btn-link p-0 edit-icon-btn" data-field="notes" tabindex="-1"><i class="bi bi-pencil"></i></button>
+                        </li>
+                        <!-- Резюме и файлы -->
+                        <li class="list-group-item">
+                            <b>Файлы кандидата:</b>
+                            <div class="d-flex flex-column gap-2 w-100" id="candidate-files-list">
+                                {% for f in candidate_files %}
+                                <div class="card flex-row align-items-center p-2 shadow-sm border-0 w-100 mb-2" style="min-height:60px;">
+                                    <span class="file-icon flex-shrink-0 me-3" style="font-size:2rem;">
+                                        {% if f.ext == 'pdf' %}<i class="bi bi-file-earmark-pdf text-danger"></i>
+                                        {% elif f.ext == 'png' or f.ext == 'jpg' or f.ext == 'jpeg' or f.ext == 'gif' or f.ext == 'bmp' or f.ext == 'webp' or f.ext == 'svg' %}<i class="bi bi-file-earmark-image text-primary"></i>
+                                        {% elif f.ext == 'doc' or f.ext == 'docx' or f.ext == 'odt' or f.ext == 'rtf' %}<i class="bi bi-file-earmark-word text-info"></i>
+                                        {% elif f.ext == 'xls' or f.ext == 'xlsx' or f.ext == 'ods' or f.ext == 'csv' %}<i class="bi bi-file-earmark-excel text-success"></i>
+                                        {% elif f.ext == 'ppt' or f.ext == 'pptx' or f.ext == 'odp' %}<i class="bi bi-file-earmark-slides text-warning"></i>
+                                        {% elif f.ext == 'zip' or f.ext == 'rar' or f.ext == '7z' or f.ext == 'tar' or f.ext == 'gz' %}<i class="bi bi-file-earmark-zip text-secondary"></i>
+                                        {% elif f.ext == 'txt' or f.ext == 'md' %}<i class="bi bi-file-earmark-text"></i>
+                                        {% elif f.ext == 'html' or f.ext == 'htm' or f.ext == 'xml' %}<i class="bi bi-file-earmark-code text-danger"></i>
+                                        {% elif f.ext == 'js' or f.ext == 'py' or f.ext == 'json' %}<i class="bi bi-file-earmark-code text-info"></i>
+                                        {% elif f.ext == 'mp3' or f.ext == 'wav' or f.ext == 'ogg' or f.ext == 'flac' %}<i class="bi bi-file-earmark-music text-warning"></i>
+                                        {% elif f.ext == 'mp4' or f.ext == 'avi' or f.ext == 'mov' or f.ext == 'mkv' or f.ext == 'webm' %}<i class="bi bi-file-earmark-play text-success"></i>
+                                        {% elif f.ext == 'psd' or f.ext == 'ai' %}<i class="bi bi-file-earmark-richtext text-danger"></i>
+                                        {% else %}<i class="bi bi-file-earmark"></i>
+                                        {% endif %}
+                                    </span>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <a href="{{ f.url }}" target="_blank" class="fw-bold text-break" style="max-width:100%;display:inline-block;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                            {{ f.name|truncatechars:100 }}
+                                        </a>
+                                        <div class="small text-muted">{{ f.uploaded_at|date:'d.m.Y H:i' }}</div>
+                                    </div>
+                                    <span class="file-delete-btn ms-2" data-file-id="{{ f.id }}" title="Удалить файл" style="cursor:pointer; color:#dc3545; font-size:1.3rem; display:flex; align-items:center;"><i class="bi bi-trash"></i></span>
+                                </div>
+                                {% empty %}
+                                <div class="text-muted">Нет файлов</div>
+                                {% endfor %}
+                            </div>
+                            <div id="dropzone" class="border border-2 border-primary rounded-3 p-4 text-center my-3 bg-light position-relative" style="cursor:pointer;transition:background 0.2s;">
+                                <i class="bi bi-cloud-arrow-up" style="font-size:2rem;"></i><br>
+                                <span class="d-block mt-2">Перетащите файлы сюда или <span class="text-primary text-decoration-underline">кликните для выбора</span></span>
+                                <input type="file" id="files-input" name="files" multiple style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;">
+                                <span class="text-danger small d-block mt-2" id="files-upload-error"></span>
+                            </div>
+                        </li>
                     </ul>
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'positions:candidate_list' %}" class="btn btn-secondary">Назад</a>
-                        <div>
-                            <a href="{% url 'positions:candidate_edit' candidate.pk %}" class="btn btn-outline-primary">Редактировать</a>
-                            <a href="{% url 'positions:candidate_delete' candidate.pk %}" class="btn btn-outline-danger ms-2">Удалить</a>
-                        </div>
+                </div>
+            </div>
+        </div>
+        <!-- Карточка истории (задачи + интервью) -->
+        <div class="col-md-4 d-none d-md-block">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">История</h5>
+                    <div class="d-flex flex-column gap-2 mb-3">
+                        {% for event in history_events %}
+                            {% if event.type == 'created' %}
+                                <div class="card shadow-sm border-0 bg-light">
+                                    <div class="card-body py-2 d-flex align-items-center gap-2">
+                                        <i class="bi bi-person-plus fs-4 text-primary"></i>
+                                        <div>
+                                            <div class="fw-semibold">Кандидат создан</div>
+                                            <div class="small text-muted">{{ event.created_at|date:'d.m.Y H:i' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% elif event.type == 'change' %}
+                                <div class="card shadow-sm border-0 bg-warning bg-opacity-10">
+                                    <div class="card-body py-2">
+                                        <div class="fw-semibold mb-1">Изменение поля: {{ event.field }}</div>
+                                        <div class="small text-muted mb-1">{{ event.changed_at|date:'d.m.Y H:i' }}</div>
+                                        <div class="mb-1">
+                                            <span class="text-muted">Было:</span> <span class="fw-semibold">{{ event.old_value|default:'—' }}</span><br>
+                                            <span class="text-muted">Стало:</span> <span class="fw-semibold">{{ event.new_value|default:'—' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% elif event.type == 'interview' %}
+                                <a href="{% url 'positions:interview_result' event.id %}" class="card shadow-sm border-0 text-decoration-none text-dark interview-history-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">{{ event.position.name }}</span>
+                                            <span class="small text-muted">{{ event.created_at|date:'d.m.Y H:i' }}</span>
+                                        </div>
+                                        <div class="mb-1">
+                                            <span class="fw-semibold">Ожидаемый грейд:</span> {{ event.expected_grade.name }}<br>
+                                            <span class="fw-semibold">Рекомендованный грейд:</span> 
+                                            {% if event.recommended_grade %}
+                                                {{ event.recommended_grade.name }}
+                                            {% else %}
+                                                —
+                                            {% endif %}<br>
+                                            <span class="fw-semibold">Общий балл:</span> {{ event.total_score }}
+                                        </div>
+                                    </div>
+                                </a>
+                            {% endif %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+const candidateId = "{{ candidate.id }}";
+
+// Инлайн-редактирование для текстовых/селект/textarea полей
+function activateInlineEdit(field) {
+    document.getElementById(field + '-view').style.display = 'none';
+    document.getElementById(field + '-form').classList.remove('d-none');
+    document.querySelector(`#${field}-form input, #${field}-form select, #${field}-form textarea`).focus();
+}
+function deactivateInlineEdit(field) {
+    document.getElementById(field + '-view').style.display = '';
+    document.getElementById(field + '-form').classList.add('d-none');
+}
+
+document.querySelectorAll('.editable-field').forEach(span => {
+    span.addEventListener('click', function() {
+        activateInlineEdit(this.dataset.field);
+    });
+});
+document.querySelectorAll('.edit-icon-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        activateInlineEdit(this.dataset.field);
+    });
+});
+
+document.querySelectorAll('.edit-inline-form').forEach(form => {
+    // Для текстовых, селект и textarea — автосохранение по blur/Enter
+    const field = form.id.replace('-form', '');
+    const input = form.querySelector('input, select, textarea');
+    if (input && field !== 'resume') {
+        input.addEventListener('blur', function() {
+            saveInlineField(field, form);
+        });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && input.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                saveInlineField(field, form);
+            }
+        });
+    }
+    // Для резюме — только submit
+    if (field === 'resume') {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveInlineField(field, form);
+        });
+    }
+});
+
+function saveInlineField(field, form) {
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    if (field === 'resume') {
+        const fileInput = form.querySelector('input[type="file"]');
+        if (fileInput.files.length > 0) {
+            formData.append('resume', fileInput.files[0]);
+        } else {
+            document.getElementById(field + '-error').textContent = 'Выберите файл';
+            return;
+        }
+    } else {
+        const input = form.querySelector('input, select, textarea');
+        let value = input.value;
+        if (field === 'phone' && value && value[0] !== '+') {
+            value = '+' + value.replace(/^\+*/, '');
+        }
+        // JS-валидация телефона
+        if (field === 'phone') {
+            const phonePattern = /^\+?\d+$/;
+            if (value && !phonePattern.test(value)) {
+                document.getElementById(field + '-error').textContent = 'Телефон должен содержать только цифры и может начинаться с +';
+                return;
+            }
+        }
+        formData.append(field, value);
+    }
+
+    fetch("{% url 'positions:candidate_update' candidate.id %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Обновляем отображение
+            if (field === 'desired_position') {
+                const select = form.querySelector('select');
+                const selected = select.options[select.selectedIndex];
+                document.getElementById(field + '-view').textContent = selected.text || '—';
+            } else if (field === 'notes') {
+                document.getElementById(field + '-view').innerHTML = form.querySelector('textarea').value ? `<blockquote class='blockquote small' style='font-size:0.9em;'><em>${form.querySelector('textarea').value.replace(/\n/g, '<br>')}</em></blockquote>` : '<span class="text-muted small">—</span>';
+            } else if (field === 'resume') {
+                location.reload();
+                return;
+            } else if (field === 'email') {
+                const val = form.querySelector('input').value;
+                document.getElementById(field + '-view').innerHTML = val ? `<a href=\"mailto:${val}\">${val}</a>` : '—';
+            } else if (field === 'phone') {
+                const val = form.querySelector('input').value;
+                const phoneVal = val ? (val[0] === '+' ? val : '+' + val.replace(/^\+*/, '')) : '';
+                document.getElementById(field + '-view').innerHTML = renderPhoneWithFlag(phoneVal);
+            } else if (field === 'telegram') {
+                const val = form.querySelector('input').value;
+                document.getElementById(field + '-view').innerHTML = val ? `<a href=\"https://t.me/${val.replace('@','')}\" target=\"_blank\">@${val.replace('@','')}</a>` : '—';
+            } else {
+                document.getElementById(field + '-view').textContent = form.querySelector('input, textarea').value || '—';
+            }
+            document.getElementById(field + '-error').textContent = '';
+            deactivateInlineEdit(field);
+        } else {
+            document.getElementById(field + '-error').textContent = data.error || 'Ошибка';
+        }
+    })
+    .catch(error => {
+        document.getElementById(field + '-error').textContent = 'Ошибка сохранения';
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Drag&Drop и автозагрузка файлов
+const dropzone = document.getElementById('dropzone');
+const filesInput = document.getElementById('files-input');
+if (dropzone && filesInput) {
+    // Подсветка при dragover
+    dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropzone.classList.add('bg-primary', 'bg-opacity-10');
+    });
+    dropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropzone.classList.remove('bg-primary', 'bg-opacity-10');
+    });
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropzone.classList.remove('bg-primary', 'bg-opacity-10');
+        filesInput.files = e.dataTransfer.files;
+        uploadFiles(filesInput.files);
+    });
+    // Клик по зоне — открывает выбор файлов
+    dropzone.addEventListener('click', function() {
+        filesInput.click();
+    });
+    // Выбор файлов через input
+    filesInput.addEventListener('change', function() {
+        uploadFiles(this.files);
+    });
+}
+function uploadFiles(fileList) {
+    if (!fileList.length) return;
+    const formData = new FormData();
+    for (let i = 0; i < fileList.length; i++) {
+        formData.append('files', fileList[i]);
+    }
+    fetch("{% url 'positions:candidate_files_upload' candidate.id %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const errorBlock = document.getElementById('files-upload-error');
+        if (data.success) {
+            errorBlock.textContent = '';
+            location.reload();
+        } else {
+            let msg = '';
+            if (data.uploaded && data.uploaded.length) {
+                msg += 'Загружено: ' + data.uploaded.join(', ') + '. ';
+            }
+            if (data.errors && data.errors.length) {
+                msg += 'Ошибки: ' + data.errors.join('; ');
+            }
+            errorBlock.textContent = msg || (data.error || 'Ошибка загрузки');
+        }
+    })
+    .catch(() => {
+        document.getElementById('files-upload-error').textContent = 'Ошибка загрузки';
+    });
+}
+
+document.querySelectorAll('.file-delete-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!confirm('Удалить этот файл?')) return;
+        const fileId = this.dataset.fileId;
+        fetch(`/candidate/file/${fileId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                this.closest('.card').remove();
+            } else {
+                alert('Ошибка при удалении файла');
+            }
+        })
+        .catch(() => {
+            alert('Ошибка при удалении файла');
+        });
+    });
+});
+
+// === Флаги и страны по телефонным кодам ===
+// Список всех стран и их телефонных кодов (сгенерировано, сокращено для примера, полный список будет длиннее)
+const countryPhoneData = [
+    { code: '+1', flag: '🇺🇸', name: 'США/Канада' },
+    { code: '+7', flag: '🇷🇺', name: 'Россия' },
+    { code: '+375', flag: '🇧🇾', name: 'Беларусь' },
+    { code: '+380', flag: '🇺🇦', name: 'Украина' },
+    { code: '+48', flag: '🇵🇱', name: 'Польша' },
+    { code: '+371', flag: '🇱🇻', name: 'Латвия' },
+    { code: '+370', flag: '🇱🇹', name: 'Литва' },
+    { code: '+372', flag: '🇪🇪', name: 'Эстония' },
+    { code: '+49', flag: '🇩🇪', name: 'Германия' },
+    { code: '+420', flag: '🇨🇿', name: 'Чехия' },
+    { code: '+44', flag: '🇬🇧', name: 'Великобритания' },
+    { code: '+33', flag: '🇫🇷', name: 'Франция' },
+    { code: '+39', flag: '🇮🇹', name: 'Италия' },
+    { code: '+34', flag: '🇪🇸', name: 'Испания' },
+    { code: '+81', flag: '🇯🇵', name: 'Япония' },
+    { code: '+86', flag: '🇨🇳', name: 'Китай' },
+    { code: '+91', flag: '🇮🇳', name: 'Индия' },
+    { code: '+61', flag: '🇦🇺', name: 'Австралия' },
+    { code: '+82', flag: '🇰🇷', name: 'Южная Корея' },
+    { code: '+90', flag: '🇹🇷', name: 'Турция' },
+    { code: '+351', flag: '🇵🇹', name: 'Португалия' },
+    { code: '+36', flag: '🇭🇺', name: 'Венгрия' },
+    { code: '+43', flag: '🇦🇹', name: 'Австрия' },
+    { code: '+31', flag: '🇳🇱', name: 'Нидерланды' },
+    { code: '+32', flag: '🇧🇪', name: 'Бельгия' },
+    { code: '+358', flag: '🇫🇮', name: 'Финляндия' },
+    { code: '+46', flag: '🇸🇪', name: 'Швеция' },
+    { code: '+47', flag: '🇳🇴', name: 'Норвегия' },
+    { code: '+45', flag: '🇩🇰', name: 'Дания' },
+    { code: '+420', flag: '🇨🇿', name: 'Чехия' },
+    { code: '+421', flag: '🇸🇰', name: 'Словакия' },
+    { code: '+386', flag: '🇸🇮', name: 'Словения' },
+    { code: '+385', flag: '🇭🇷', name: 'Хорватия' },
+    { code: '+357', flag: '🇨🇾', name: 'Кипр' },
+    { code: '+30', flag: '🇬🇷', name: 'Греция' },
+    { code: '+40', flag: '🇷🇴', name: 'Румыния' },
+    { code: '+420', flag: '🇨🇿', name: 'Чехия' },
+    { code: '+421', flag: '🇸🇰', name: 'Словакия' },
+    { code: '+386', flag: '🇸🇮', name: 'Словения' },
+    { code: '+385', flag: '🇭🇷', name: 'Хорватия' },
+    { code: '+357', flag: '🇨🇾', name: 'Кипр' },
+    // ... (добавить все страны, можно взять с https://en.wikipedia.org/wiki/List_of_country_calling_codes)
+];
+// Сортируем по убыванию длины кода, чтобы длинные коды шли первыми
+countryPhoneData.sort((a, b) => b.code.length - a.code.length);
+
+function getCountryData(phone) {
+    if (!phone) return { flag: '', name: '' };
+    phone = phone.replace(/\s|\(|\)/g, '');
+    for (const item of countryPhoneData) {
+        if (phone.startsWith(item.code)) {
+            return item;
+        }
+    }
+    return { flag: '', name: '' };
+}
+
+function renderPhoneWithFlag(phone) {
+    const { flag, name } = getCountryData(phone);
+    if (!phone) return '—';
+    return `<span style="font-size:1.3em;vertical-align:middle;">${flag ? flag : ''}</span> <a href="tel:${phone}">${phone}</a>${name ? ` <span class='text-muted' style='font-size:0.95em;'>( ${name} )</span>` : ''}`;
+}
+
+// После загрузки страницы — отрисовать флаг для телефона, если есть
+window.addEventListener('DOMContentLoaded', function() {
+    const phoneSpan = document.getElementById('phone-view');
+    if (phoneSpan && phoneSpan.textContent.trim() && phoneSpan.querySelector('a')) {
+        const phone = phoneSpan.querySelector('a').textContent.trim();
+        phoneSpan.innerHTML = renderPhoneWithFlag(phone);
+    }
+    // Динамическое обновление в форме редактирования
+    const phoneInput = document.querySelector('#phone-form input[type="tel"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            const preview = document.getElementById('phone-view');
+            preview.innerHTML = renderPhoneWithFlag(this.value);
+        });
+    }
+});
+</script>
+{% endblock %}
 {% endblock %} 

@@ -340,3 +340,51 @@ class Candidate(models.Model):
         verbose_name = "Кандидат"
         verbose_name_plural = "Кандидаты"
         ordering = ['full_name']
+
+class TestAnswer(models.Model):
+    question = models.ForeignKey(InterviewQuestion, on_delete=models.CASCADE, related_name='answers', verbose_name='Вопрос')
+    text = models.TextField(verbose_name='Текст ответа')
+    is_correct = models.BooleanField(default=False, verbose_name='Правильный ответ')
+    order = models.IntegerField(default=0, verbose_name='Порядок')
+    
+    class Meta:
+        verbose_name = 'Вариант ответа'
+        verbose_name_plural = 'Варианты ответов'
+        ordering = ['question', 'order']
+    
+    def __str__(self):
+        return f"{self.question.text[:50]} - {self.text[:50]}"
+
+class CandidateFile(models.Model):
+    candidate = models.ForeignKey('Candidate', on_delete=models.CASCADE, related_name='files', verbose_name='Кандидат')
+    file = models.FileField(upload_to='candidate_files/', verbose_name='Файл')
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='Загружено')
+    
+    def __str__(self):
+        return self.file.name.split('/')[-1]
+
+class CandidateTask(models.Model):
+    candidate = models.ForeignKey('Candidate', on_delete=models.CASCADE, related_name='tasks', verbose_name='Кандидат')
+    title = models.CharField(max_length=255, verbose_name='Название задачи')
+    description = models.TextField(blank=True, verbose_name='Описание')
+    due_date = models.DateField(null=True, blank=True, verbose_name='Дедлайн')
+    is_completed = models.BooleanField(default=False, verbose_name='Выполнено')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name = 'Задача по кандидату'
+        verbose_name_plural = 'Задачи по кандидату'
+
+class CandidateChangeHistory(models.Model):
+    candidate = models.ForeignKey('Candidate', on_delete=models.CASCADE, related_name='change_history')
+    field = models.CharField(max_length=100)
+    old_value = models.TextField(null=True, blank=True)
+    new_value = models.TextField(null=True, blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.candidate.full_name}: {self.field} ({self.changed_at})"
