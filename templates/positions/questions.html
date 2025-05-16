@@ -110,6 +110,21 @@
     .active-cell {
         min-width: 100px !important;
     }
+    /* Явный цвет для заголовка */
+    h1 {
+        color: var(--dropdown-text);
+    }
+    [data-theme="dark"] h1 {
+        color: #f1f5f9;
+    }
+    [data-theme="dark"] .editable-cell:hover {
+        background-color: #232946 !important;
+        color: #f1f5f9 !important;
+    }
+    [data-theme="dark"] .editable-cell:focus {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+    }
 </style>
 
 <div class="table-responsive">

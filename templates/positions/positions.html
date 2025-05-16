@@ -13,70 +13,147 @@
 <style>
     .table-responsive {
         position: relative;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
+        border-radius: 0.75rem;
+        border-top-left-radius: 1.5rem;
+        border: 1.5px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        background: var(--bg-secondary);
     }
     .table-wrapper {
         overflow-x: auto;
-        border-radius: 8px;
+        border-radius: 0.75rem;
     }
     .sticky-column {
         position: sticky;
         left: 0;
-        background-color: #fff;
+        background-color: var(--bg-secondary);
         z-index: 1;
-        min-width: 300px;
+        min-width: 180px;
     }
     .sticky-header {
         position: sticky;
         left: 0;
-        background-color: #212529;
+        background-color: var(--table-header-bg);
         z-index: 2;
     }
     .table-bordered .sticky-column {
-        border-right: 2px solid #dee2e6;
+        border-right: 2px solid var(--border-color);
     }
     .add-row-container {
         position: sticky;
         left: 0;
         bottom: 0;
-        background-color: #fff;
-        border: 1px solid #dee2e6;
+        background-color: var(--bg-secondary);
+        border: 1.5px solid var(--border-color);
         border-top: none;
         z-index: 1;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 0.75rem;
+        border-bottom-right-radius: 0.75rem;
     }
     .add-row-container .btn {
         width: 100%;
-        border-radius: 0 0 8px 8px;
-        padding: 8px;
+        border-radius: 0 0 0.75rem 0.75rem;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
     .table {
         margin-bottom: 0;
-        border-radius: 8px;
+        border-radius: 0.75rem;
+        background: var(--bg-secondary);
+        color: var(--table-text, var(--dropdown-text));
+        font-size: 0.97rem;
     }
     .table th, .table td {
-        min-width: 350px;
+        min-width: 120px;
+        padding: 0.4rem 0.5rem;
+        color: var(--table-text, var(--dropdown-text));
+        border-color: var(--border-color);
+        vertical-align: middle;
     }
     .table thead th:first-child {
-        border-top-left-radius: 8px;
+        border-top-left-radius: 1.5rem;
     }
     .table thead th:last-child {
-        border-top-right-radius: 8px;
+        border-top-right-radius: 0.75rem;
+    }
+    .table tbody tr:nth-child(even) {
+        background: rgba(37,99,235,0.03);
+    }
+    [data-theme="dark"] .table tbody tr:nth-child(even) {
+        background: rgba(129,140,248,0.06);
+    }
+    .table tbody tr:hover {
+        background: var(--dropdown-hover-bg);
+        transition: background 0.2s;
     }
     .editable-cell {
         cursor: pointer;
-        padding: 5px;
+        padding: 3px 6px;
         border-radius: 4px;
-        min-height: 50px;
+        min-height: 36px;
+        transition: background 0.2s, color 0.2s;
+        font-size: 0.97rem;
     }
     .editable-cell:hover {
-        background-color: #f8f9fa;
+        background-color: var(--dropdown-hover-bg);
+        color: var(--dropdown-hover-text);
     }
     .editable-cell:focus {
-        background-color: #fff;
-        outline: 2px solid #0d6efd;
+        background-color: var(--input-bg);
+        color: var(--dropdown-text);
+        outline: 2px solid var(--btn-primary-bg);
+    }
+    [data-theme="dark"] .sticky-column,
+    [data-theme="dark"] .add-row-container {
+        background-color: var(--bg-secondary);
+    }
+    [data-theme="dark"] .editable-cell:hover {
+        background-color: #232946 !important;
+        color: #f1f5f9 !important;
+    }
+    [data-theme="dark"] .editable-cell:focus {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+    }
+    .delete-position, .delete-row {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+    tr:hover .delete-position, tr:hover .delete-row {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    h1 {
+        color: var(--dropdown-text);
+        font-size: 1.35rem;
+        font-weight: 700;
+    }
+    [data-theme="dark"] h1 {
+        color: #f1f5f9;
+    }
+    #save-notification {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        z-index: 3000;
+        background: var(--bg-secondary);
+        color: var(--btn-primary-bg);
+        border: 1.5px solid var(--btn-primary-bg);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+    #save-notification.show {
+        opacity: 1;
+        pointer-events: auto;
     }
 </style>
 
@@ -149,6 +226,10 @@
         </button>
     </div>
 </div>
+
+<!-- Уведомление об автосохранении -->
+<div id="save-notification"></div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -423,6 +504,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Произошла ошибка при удалении специализации: ' + error.message);
             }
         });
+    }
+});
+
+// --- Автосохранение с уведомлением ---
+function showSaveNotification(message, isError = false) {
+    const notif = document.getElementById('save-notification');
+    notif.textContent = message;
+    notif.style.background = isError ? '#dc3545' : 'var(--bg-secondary)';
+    notif.style.color = isError ? '#fff' : 'var(--btn-primary-bg)';
+    notif.style.borderColor = isError ? '#dc3545' : 'var(--btn-primary-bg)';
+    notif.classList.add('show');
+    setTimeout(() => notif.classList.remove('show'), 5000);
+}
+
+// Кнопка удаления с подтверждением
+let deleteConfirmTimeout = null;
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.delete-position, .delete-row');
+    if (btn) {
+        if (!btn.classList.contains('confirm')) {
+            btn.classList.add('confirm');
+            btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Подтвердить';
+            clearTimeout(deleteConfirmTimeout);
+            deleteConfirmTimeout = setTimeout(() => {
+                btn.classList.remove('confirm');
+                btn.innerHTML = '<i class="bi bi-trash"></i>';
+            }, 3000);
+            e.preventDefault();
+            return;
+        }
+        // Если уже подтверждено — продолжаем стандартное удаление
+        btn.classList.remove('confirm');
+        btn.innerHTML = '<i class="bi bi-trash"></i>';
     }
 });
 </script>
