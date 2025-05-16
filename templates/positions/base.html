@@ -9,18 +9,107 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f4f6fb;
-            min-height: 100vh;
+        :root {
+            /* Светлая тема */
+            --bg-primary: #f4f6fb;
+            --bg-secondary: #ffffff;
+            --sidebar-bg: #2563eb;
+            --sidebar-active-bg: #1e40af;
+            --sidebar-text: #fff;
+            --sidebar-icon: #fff;
+            --topbar-bg: #1e293b;
+            --topbar-text: #fff;
+            --topbar-icon: #fff;
+            --btn-primary-bg: #2563eb;
+            --btn-primary-text: #fff;
+            --btn-primary-hover-bg: #1e40af;
+            --btn-primary-hover-text: #fff;
+            --dropdown-bg: #fff;
+            --dropdown-text: #1e293b;
+            --dropdown-hover-bg: #e0e7ef;
+            --dropdown-hover-text: #2563eb;
+            --border-color: #e5e7eb;
+            --card-shadow: 0 2px 8px rgba(37,99,235,0.06);
+            --input-bg: #fff;
+            --input-border: #e5e7eb;
+            --table-header-bg: #f8fafc;
+            --table-row-hover: #f1f5f9;
+            --inline-edit-bg: #f8fafc;
+            --inline-edit-border: #e5e7eb;
+            --sidebar-active-icon: #1e40af;
+            --dropdown-active-icon: #2563eb;
+            --sidebar-icon-dark: #1e40af;
         }
+
+        [data-theme="dark"] {
+            /* Темная тема */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --sidebar-bg: #312e81;
+            --sidebar-active-bg: #6366f1;
+            --sidebar-text: #fff;
+            --sidebar-icon: #fff;
+            --topbar-bg: #181c2f;
+            --topbar-text: #f1f5f9;
+            --topbar-icon: #f1f5f9;
+            --btn-primary-bg: #6366f1;
+            --btn-primary-text: #fff;
+            --btn-primary-hover-bg: #818cf8;
+            --btn-primary-hover-text: #fff;
+            --dropdown-bg: #232946;
+            --dropdown-text: #f1f5f9;
+            --dropdown-hover-bg: #312e81;
+            --dropdown-hover-text: #a5b4fc;
+            --border-color: #334155;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            --input-bg: #1e293b;
+            --input-border: #334155;
+            --table-header-bg: #1e293b;
+            --table-row-hover: #334155;
+            --inline-edit-bg: #334155;
+            --inline-edit-border: #475569;
+            --sidebar-active-icon: #a5b4fc;
+            --dropdown-active-icon: #a5b4fc;
+            --sidebar-icon-dark: #a5b4fc;
+            --table-text: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--topbar-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Градиентный фон для темной темы */
+        [data-theme="dark"] body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            background-attachment: fixed;
+        }
+
+        /* Пузырьковый эффект для темной темы */
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(129, 140, 248, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .sidebar {
             position: fixed;
             top: 96px;
             left: 0;
             height: calc(100vh - 96px);
             width: 80px;
-            background: #2563eb;
-            color: #fff;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
             z-index: 1030;
             display: flex;
             flex-direction: column;
@@ -29,7 +118,7 @@
             border-bottom-right-radius: 0;
             overflow: hidden;
             transition: width 0.2s cubic-bezier(.4,0,.2,1);
-            border-right: 1px solid #e5e7eb;
+            border-right: 1px solid var(--border-color);
         }
         .sidebar:hover,
         .sidebar.force-open {
@@ -45,7 +134,8 @@
             margin-bottom: 2rem;
         }
         .sidebar .nav-link {
-            color: #ffffff;
+            color: var(--sidebar-text);
+            font-weight: 500;
             border-radius: 0.25rem;
             font-size: 1.05rem;
             display: flex;
@@ -74,8 +164,8 @@
         }
         /* Кружок вокруг иконки для активного пункта только в свернутом меню */
         .sidebar:not(:hover):not(.force-open) .nav-link.active i {
-            background: #e0e7ef;
-            color: #2563eb;
+            background: #6366f1;
+            color: #e0e7ef;
             border-radius: 50%;
             width: 36px;
             height: 36px;
@@ -97,24 +187,23 @@
         /* Обычное выделение фоном при раскрытом меню */
         .sidebar:hover .nav-link.active,
         .sidebar.force-open .nav-link.active {
-            background: #1e40af;
-            color: #fff;
+            background: var(--sidebar-active-bg);
+            color: var(--sidebar-text);
         }
         .sidebar .nav-link i {
-            font-size: 1.2rem;
-            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+            color: var(--sidebar-text) !important;
         }
         .main {
             margin-left: 80px;
             min-height: 100vh;
-            background: #f4f6fb;
+            background: var(--bg-primary);
             transition: margin-left 0.2s cubic-bezier(.4,0,.2,1);
             padding-top: 64px;
         }
         .topbar {
             height: 64px;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            background: var(--topbar-bg);
+            box-shadow: var(--card-shadow);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -136,7 +225,7 @@
             gap: 0.5rem;
             font-size: 1.25rem;
             font-weight: 700;
-            color: #2563eb;
+            color: var(--topbar-text);
             letter-spacing: 1px;
         }
         .topbar .logo i {
@@ -145,11 +234,11 @@
         .topbar .system-title {
             font-weight: 600;
             font-size: 1.2rem;
-            color: #2563eb;
+            color: var(--topbar-text);
             letter-spacing: 1px;
         }
         .topbar .user-dropdown .btn-link {
-            color: #2563eb;
+            color: var(--topbar-text);
             font-weight: 500;
         }
         .main-content {
@@ -159,10 +248,15 @@
             border: none;
             border-radius: 0.75rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            background: var(--bg-secondary);
+            color: var(--topbar-text);
         }
         .alert {
             border-radius: 0.75rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            background: var(--bg-secondary);
+            color: var(--dropdown-text);
+            border-color: var(--border-color);
         }
         @media (max-width: 991.98px) {
             .sidebar {
@@ -183,19 +277,20 @@
         }
         .topbar-nav .btn {
             border-radius: 0.5rem;
-            background: #f4f6fb;
-            color: #2563eb;
+            background: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
             border: none;
             font-size: 1rem;
             transition: background 0.2s, color 0.2s, box-shadow 0.2s;
         }
         .topbar-nav .btn:hover, .topbar-nav .btn:focus {
-            background: #e0e7ef;
-            color: #1e40af;
+            background: var(--btn-primary-hover-bg);
+            color: var(--btn-primary-hover-text);
             box-shadow: 0 2px 8px rgba(37,99,235,0.08);
         }
         .topbar-nav .btn i {
             font-size: 1.2rem;
+            color: var(--btn-primary-text);
         }
         .theme-toggle-fixed {
             position: fixed;
@@ -205,8 +300,8 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            color: #c7d2fe;
-            background: none;
+            color: var(--sidebar-text);
+            background: var(--sidebar-bg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -214,8 +309,8 @@
             font-size: 1.3rem;
         }
         .theme-toggle-fixed:hover, .theme-toggle-fixed:focus {
-            background: #e0e7ef;
-            color: #2563eb;
+            background: var(--sidebar-active-bg);
+            color: var(--sidebar-text);
         }
         /* Кастомное выпадающее меню для topbar */
         .custom-dropdown {
@@ -236,7 +331,7 @@
             top: 110%;
             left: 0;
             width: 100%;
-            background: #fff;
+            background: var(--dropdown-bg);
             border-radius: 1rem;
             box-shadow: 0 8px 32px rgba(37,99,235,0.10);
             padding: 0.5rem 0;
@@ -247,7 +342,7 @@
         }
         .dropdown-item-custom {
             padding: 0.75rem 1.5rem;
-            color: #2563eb;
+            color: var(--dropdown-text);
             border-radius: 0.5rem;
             font-weight: 500;
             font-size: 1.05rem;
@@ -256,11 +351,263 @@
             margin: 0 0.5rem;
         }
         .dropdown-item-custom:hover, .dropdown-item-custom:focus {
-            background: #e0e7ef;
-            color: #1e40af;
+            background: var(--dropdown-hover-bg);
+            color: var(--dropdown-hover-text);
         }
         .dropdown-item-custom i {
-            font-size: 1.2rem;
+            color: var(--dropdown-text) !important;
+        }
+        /* Стили для форм */
+        input, select, textarea {
+            background-color: var(--input-bg) !important;
+            border-color: var(--input-border) !important;
+            color: var(--dropdown-text) !important;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--btn-primary-bg) !important;
+            box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15) !important;
+        }
+
+        /* Стили для таблиц */
+        .table {
+            color: var(--dropdown-text);
+        }
+
+        .table thead th {
+            background-color: var(--table-header-bg);
+            border-bottom-color: var(--border-color);
+            color: var(--table-text);
+            font-weight: 600;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--table-row-hover);
+        }
+
+        .table td, .table th {
+            color: var(--table-text);
+            border-color: var(--border-color);
+        }
+
+        /* Стили для inline-редактирования */
+        [contenteditable="true"] {
+            background-color: var(--inline-edit-bg);
+            border: 1px solid var(--inline-edit-border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            outline: none;
+        }
+
+        [contenteditable="true"]:focus {
+            border-color: var(--btn-primary-bg);
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+        }
+
+        /* Стили для кнопок */
+        .btn-light {
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color);
+            color: var(--dropdown-text);
+        }
+
+        .btn-light:hover {
+            background-color: var(--dropdown-hover-bg);
+            color: var(--dropdown-hover-text);
+        }
+
+        .btn-primary {
+            background-color: var(--btn-primary-bg);
+            border-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--btn-primary-hover-bg);
+            border-color: var(--btn-primary-hover-bg);
+            color: var(--btn-primary-hover-text);
+        }
+
+        /* Стили для выпадающих меню */
+        .dropdown-menu {
+            background-color: var(--dropdown-bg);
+            border-color: var(--border-color);
+        }
+
+        .dropdown-item {
+            color: var(--dropdown-text);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--dropdown-hover-bg);
+            color: var(--dropdown-hover-text);
+        }
+
+        /* Стили для модальных окон */
+        .modal-content {
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color);
+            color: var(--dropdown-text);
+        }
+
+        .modal-header {
+            border-bottom-color: var(--border-color);
+        }
+
+        .modal-footer {
+            border-top-color: var(--border-color);
+        }
+
+        /* Стили для навигации */
+        .nav-link {
+            color: var(--dropdown-text);
+        }
+
+        .nav-link:hover {
+            color: var(--btn-primary-hover-bg);
+        }
+
+        /* Стили для карточек меню */
+        .menu-card {
+            background: var(--bg-secondary);
+            color: var(--btn-primary-bg);
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+            border: 2px solid var(--btn-primary-bg);
+        }
+
+        .menu-card:hover {
+            background: var(--dropdown-hover-bg);
+            color: var(--btn-primary-hover-bg);
+        }
+
+        /* Стили для логотипа и заголовков */
+        .logo, .system-title {
+            color: var(--topbar-text);
+        }
+
+        /* Стили для иконок */
+        .bi {
+            color: var(--topbar-icon);
+        }
+
+        .nav-link.active .bi {
+            color: var(--btn-primary-hover-bg);
+        }
+
+        .sidebar .nav-link.active i,
+        .sidebar .nav-link:focus i,
+        .sidebar .nav-link:hover i {
+            color: var(--sidebar-active-icon) !important;
+        }
+        .dropdown-menu .dropdown-item.active i,
+        .dropdown-menu .dropdown-item:active i,
+        .dropdown-menu .dropdown-item:focus i,
+        .dropdown-menu .dropdown-item:hover i,
+        .dropdown-menu .dropdown-item-custom.active i,
+        .dropdown-menu .dropdown-item-custom:active i,
+        .dropdown-menu .dropdown-item-custom:focus i,
+        .dropdown-menu .dropdown-item-custom:hover i,
+        .dropdown-menu.show > .dropdown-item i {
+            color: var(--dropdown-active-icon) !important;
+        }
+        /* Явный цвет для иконок в выпадающем меню профиля */
+        .dropdown-menu .dropdown-item i,
+        .dropdown-menu .dropdown-item-custom i {
+            color: var(--dropdown-text) !important;
+        }
+        /* Для темной темы — иконки в сайд-баре чуть темнее фона */
+        [data-theme="dark"] .sidebar .nav-link i {
+            color: var(--sidebar-icon-dark) !important;
+        }
+        /* Для светлой темы — иконки белые */
+        :root .sidebar .nav-link i {
+            color: var(--sidebar-text) !important;
+        }
+        .main-content .table th,
+        .main-content .table td {
+            color: var(--dropdown-text) !important;
+            opacity: 1 !important;
+        }
+        /* .main-content .btn .bi {
+            color: var(--btn-primary-bg) !important;
+        } */
+        .main-content .btn-danger .bi {
+            color: #dc3545 !important;
+        }
+        /* Стили для иконок в кнопках */
+        .btn .bi {
+            color: inherit;
+        }
+
+        .btn-primary .bi {
+            color: var(--btn-primary-text);
+        }
+
+        .btn-danger .bi {
+            color: #fff;
+        }
+
+        .btn-light .bi {
+            color: var(--dropdown-text);
+        }
+
+        .btn-light:hover .bi {
+            color: var(--dropdown-hover-text);
+        }
+
+        [data-theme="dark"] .main-content .card,
+        [data-theme="dark"] .main-content .table {
+            background: var(--bg-secondary) !important;
+        }
+
+        [data-theme="dark"] .main-content .table th,
+        [data-theme="dark"] .main-content .table td {
+            color: #f1f5f9 !important;
+            background: transparent !important;
+            opacity: 1 !important;
+        }
+
+        [data-theme="dark"] .main-content .table tbody tr:hover {
+            background: #232946 !important;
+        }
+
+        /* Явные цвета для иконок действий в темной теме */
+        [data-theme="dark"] .btn-primary .bi {
+            color: #fff !important;
+        }
+        [data-theme="dark"] .btn-danger .bi {
+            color: #fff !important;
+        }
+
+        /* Явные цвета для иконок в столбце Действия */
+        .main-content .btn-group .btn .bi {
+            color: var(--btn-primary-bg) !important;
+        }
+        .main-content .btn-group .btn.btn-primary .bi {
+            color: var(--btn-primary-text) !important;
+        }
+        .main-content .btn-group .btn.btn-danger .bi {
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] .main-content .btn-group .btn.btn-primary .bi {
+            color: #fff !important;
+        }
+        [data-theme="dark"] .main-content .btn-group .btn.btn-danger .bi {
+            color: #fff !important;
+        }
+
+        /* Явные цвета для иконок удаления (корзины) в столбце Действия */
+        .main-content .btn-group .btn.btn-danger .bi {
+            color: #fff !important;
+        }
+        [data-theme="dark"] .main-content .btn-group .btn.btn-danger .bi {
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] .menu-card {
+            border: 2px solid #818cf8;
+            box-shadow: 0 2px 12px rgba(129,140,248,0.15);
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -275,7 +622,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'positions:index' %}">
+                <a class="nav-link {% if request.resolver_match.url_name == 'index' or request.resolver_match.url_name == 'grades' or request.resolver_match.url_name == 'positions' or request.resolver_match.url_name == 'parameters' or request.resolver_match.url_name == 'score_matrices' or request.resolver_match.url_name == 'questions' %}active{% endif %}" href="{% url 'positions:index' %}">
                     <i class="bi bi-speedometer2"></i> <span>Системы оценки</span>
                 </a>
             </li>
@@ -369,6 +716,29 @@
     <script>
         const sidebar = document.getElementById('sidebar');
         const themeBtn = document.querySelector('.theme-toggle-fixed');
+        
+        // Функция для переключения темы
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Обновляем иконку
+            const themeIcon = themeBtn.querySelector('i');
+            themeIcon.className = newTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon';
+        }
+
+        // Инициализация темы
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const themeIcon = themeBtn.querySelector('i');
+            themeIcon.className = savedTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon';
+        }
+
+        // Обработчики событий
+        themeBtn.addEventListener('click', toggleTheme);
         themeBtn.addEventListener('mouseenter', () => {
             sidebar.classList.add('force-open');
         });
@@ -381,6 +751,10 @@
         sidebar.addEventListener('mouseleave', () => {
             sidebar.classList.remove('force-open');
         });
+
+        // Инициализация при загрузке страницы
+        initTheme();
+
         // Кастомное выпадающее меню для topbar (Специализации и грейды)
         const specBtn = document.getElementById('specDropdownBtn');
         const specDropdown = document.getElementById('specDropdown');

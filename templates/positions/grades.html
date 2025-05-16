@@ -4,24 +4,24 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Грейды</h1>
+    <h1 class="mb-0" style="color: var(--dropdown-text);">Грейды</h1>
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#gradeModal">
         <i class="bi bi-plus-circle"></i> Добавить грейд
     </button>
 </div>
 
 {% if grades %}
-<div class="row">
+<div class="row" id="grades-list">
     {% for grade in grades %}
-    <div class="col-12 mb-4">
-        <div class="card grade-card" data-grade-id="{{ grade.id }}" style="cursor: pointer;">
+    <div class="col-12 mb-4 grade-draggable" draggable="true" data-grade-id="{{ grade.id }}">
+        <div class="card grade-card h-100 shadow-sm border-0" style="cursor: grab; background: var(--bg-secondary); color: var(--dropdown-text); transition: box-shadow 0.2s;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="card-title">{{ grade.name }}</h5>
-                        <p class="card-text">{{ grade.positions }}</p>
+                        <h5 class="card-title mb-1" style="color: var(--dropdown-text);">{{ grade.name }}</h5>
+                        <p class="card-text small mb-0" style="color: var(--dropdown-text);">{{ grade.positions }}</p>
                     </div>
-                    <div class="text-muted">
+                    <div class="text-muted" style="color: var(--dropdown-text);">
                         Порядок: {{ grade.order }}
                     </div>
                 </div>
@@ -50,15 +50,15 @@
                     <input type="hidden" id="gradeId" name="id">
                     <div class="mb-3">
                         <label for="id_name" class="form-label">Название грейда</label>
-                        <input type="text" class="form-control" id="id_name" name="name" required>
+                        <input type="text" class="form-control" id="id_name" name="name" required style="background: var(--input-bg); color: var(--dropdown-text); border-color: var(--input-border);">
                     </div>
                     <div class="mb-3">
                         <label for="id_positions" class="form-label">Должности</label>
-                        <textarea class="form-control" id="id_positions" name="positions" rows="3"></textarea>
+                        <textarea class="form-control" id="id_positions" name="positions" rows="3" style="background: var(--input-bg); color: var(--dropdown-text); border-color: var(--input-border);"></textarea>
                     </div>
                     <div class="mb-3">
                         <label for="id_order" class="form-label">Порядок</label>
-                        <input type="number" class="form-control" id="id_order" name="order" value="{{ next_order }}" required>
+                        <input type="number" class="form-control" id="id_order" name="order" value="{{ next_order }}" required style="background: var(--input-bg); color: var(--dropdown-text); border-color: var(--input-border);">
                     </div>
                 </form>
             </div>
@@ -150,6 +150,75 @@ document.addEventListener('DOMContentLoaded', function() {
         modalTitle.textContent = 'Создание нового грейда';
         orderInput.value = '{{ next_order }}';
     });
+
+    // Drag&Drop сортировка грейдов
+    let dragged;
+    const gradesList = document.getElementById('grades-list');
+    gradesList.addEventListener('dragstart', function(e) {
+        if (e.target.classList.contains('grade-draggable')) {
+            dragged = e.target;
+            e.target.style.opacity = 0.5;
+        }
+    });
+    gradesList.addEventListener('dragend', function(e) {
+        if (e.target.classList.contains('grade-draggable')) {
+            e.target.style.opacity = '';
+        }
+    });
+    gradesList.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(gradesList, e.clientY);
+        if (afterElement == null) {
+            gradesList.appendChild(dragged);
+        } else {
+            gradesList.insertBefore(dragged, afterElement);
+        }
+    });
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.grade-draggable:not([style*="opacity: 0.5"])')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: -Infinity }).element;
+    }
+    // Сохраняем порядок после dnd
+    gradesList.addEventListener('drop', function(e) {
+        e.preventDefault();
+        saveNewOrder();
+    });
+    function saveNewOrder() {
+        const order = Array.from(gradesList.querySelectorAll('.grade-draggable')).map((el, idx) => ({
+            id: el.dataset.gradeId,
+            order: idx + 1
+        }));
+        fetch('/grades/reorder/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({order: order})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Ошибка при сохранении порядка');
+            } else {
+                // Можно обновить порядок на карточках без перезагрузки
+                order.forEach(item => {
+                    const card = gradesList.querySelector(`[data-grade-id="${item.id}"] .text-muted`);
+                    if (card) card.textContent = 'Порядок: ' + item.order;
+                });
+            }
+        })
+        .catch(() => alert('Ошибка при сохранении порядка'));
+    }
 });
 </script>
 {% endblock %} 

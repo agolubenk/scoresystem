@@ -57,4 +57,5 @@ urlpatterns = [
     path('candidate/<int:pk>/tasks/', views.candidate_tasks, name='candidate_tasks'),
     path('candidate/<int:pk>/add_comment/', add_candidate_comment, name='add_candidate_comment'),
     path('candidate/comment/<int:comment_id>/edit/', edit_candidate_comment, name='edit_candidate_comment'),
+    path('grades/reorder/', views.reorder_grades, name='reorder_grades'),
 ] 

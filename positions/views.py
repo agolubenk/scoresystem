@@ -1490,3 +1490,17 @@ def edit_candidate_comment(request, comment_id):
 
 def index(request):
     return render(request, 'positions/index.html')
+
+@csrf_exempt
+def reorder_grades(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            for item in data.get('order', []):
+                grade = Grade.objects.get(id=item['id'])
+                grade.order = item['order']
+                grade.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid method'})

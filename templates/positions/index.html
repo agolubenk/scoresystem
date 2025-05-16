@@ -50,31 +50,59 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: #fff;
-    border-radius: 1.25rem;
-    box-shadow: 0 2px 12px rgba(37,99,235,0.08);
+    background: var(--bg-secondary);
+    border-radius: 0.75rem;
+    border-top-left-radius: 1.5rem;
+    box-shadow: var(--card-shadow);
     padding: 2.5rem 1rem 1.5rem 1rem;
     text-decoration: none;
-    color: #2563eb;
+    color: var(--btn-primary-bg);
     font-size: 1.1rem;
     font-weight: 500;
     transition: box-shadow 0.2s, background 0.2s, color 0.2s;
     min-height: 180px;
     margin-bottom: 0.5rem;
+    border: 1.5px solid var(--border-color);
 }
 .menu-card:hover, .menu-card:focus {
-    background: #e0e7ef;
-    color: #1e40af;
+    background: var(--dropdown-hover-bg);
+    color: var(--btn-primary-hover-bg);
     box-shadow: 0 4px 24px rgba(37,99,235,0.16);
 }
 .menu-card i {
     font-size: 2.5rem;
     margin-bottom: 1rem;
+    color: var(--btn-primary-bg);
+    transition: color 0.2s;
+}
+.menu-card:hover i, .menu-card:focus i {
+    color: var(--btn-primary-hover-bg);
 }
 .menu-card span {
     margin-top: 0.5rem;
     font-size: 1.1rem;
     font-weight: 600;
+}
+[data-theme="dark"] .menu-card {
+    background: var(--bg-secondary);
+    color: var(--btn-primary-bg);
+    box-shadow: var(--card-shadow);
+}
+[data-theme="dark"] .menu-card:hover, [data-theme="dark"] .menu-card:focus {
+    background: var(--dropdown-hover-bg);
+    color: var(--btn-primary-hover-bg);
+}
+[data-theme="dark"] .menu-card i {
+    color: var(--btn-primary-bg);
+}
+[data-theme="dark"] .menu-card:hover i, [data-theme="dark"] .menu-card:focus i {
+    color: var(--btn-primary-hover-bg);
+}
+/* Цвет текста для заголовков и основного текста в светлой теме */
+body:not([data-theme="dark"]) .main-content h2,
+body:not([data-theme="dark"]) .main-content,
+body:not([data-theme="dark"]) .main-content .container-fluid {
+    color: var(--dropdown-text);
 }
 </style>
 {% endblock %} 
