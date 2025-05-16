@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Sum
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 
 # Create your models here.
 
@@ -388,3 +389,12 @@ class CandidateChangeHistory(models.Model):
 
     def __str__(self):
         return f"{self.candidate.full_name}: {self.field} ({self.changed_at})"
+
+class CandidateComment(models.Model):
+    candidate = models.ForeignKey('Candidate', on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Автор')
+    text = models.TextField(verbose_name='Комментарий')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Комментарий от {self.author} ({self.created_at})"

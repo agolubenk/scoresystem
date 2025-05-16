@@ -5,7 +5,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.utils.decorators import method_decorator
 import json
 from django.core.serializers import serialize
-from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate, TestAnswer, CandidateFile, CandidateTask, CandidateChangeHistory
+from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate, TestAnswer, CandidateFile, CandidateTask, CandidateChangeHistory, CandidateComment
 from .forms import GradeForm, CandidateForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -1207,6 +1207,13 @@ def candidate_files_upload(request, pk):
         try:
             CandidateFile.objects.create(candidate=candidate, file=f)
             uploaded.append(f.name)
+            # История изменений
+            CandidateChangeHistory.objects.create(
+                candidate=candidate,
+                field='file',
+                old_value='',
+                new_value=f'Загружен файл: {f.name}'
+            )
         except Exception as e:
             errors.append(f"{f.name}: {str(e)}")
     if errors:
@@ -1222,9 +1229,17 @@ def candidate_detail(request, pk):
         ext = fname.lower().split('.')[-1] if '.' in fname else ''
         files.append({'id': f.id, 'url': f.file.url, 'name': fname, 'ext': ext, 'uploaded_at': f.uploaded_at})
 
-    # Получаем все интервью кандидата
+    # Собираем все имена, которые когда-либо были у кандидата (для интервью)
+    names = set([candidate.full_name])
+    for ch in candidate.change_history.filter(field='full_name'):
+        if ch.old_value:
+            names.add(ch.old_value)
+        if ch.new_value:
+            names.add(ch.new_value)
+
+    # Получаем все интервью по этим именам
     interviews_qs = Interview.objects.filter(
-        candidate_name=candidate.full_name
+        candidate_name__in=names
     ).select_related('position', 'expected_grade').order_by('-created_at')
 
     # Для каждой карточки интервью собираем рекомендуемый грейд и общий балл
@@ -1264,6 +1279,20 @@ def candidate_detail(request, pk):
         for ch in candidate.change_history.all()
     ]
 
+    # Комментарии
+    comments = [
+        {
+            'type': 'comment',
+            'id': c.id,
+            'author': c.author.get_full_name() or c.author.username if c.author else '—',
+            'author_id': c.author.id if c.author else None,
+            'text': c.text,
+            'created_at': c.created_at,
+            'can_edit': (request.user.is_authenticated and c.author and c.author.id == request.user.id),
+        }
+        for c in candidate.comments.all()
+    ]
+
     # Событие создания кандидата
     created_event = {
         'type': 'created',
@@ -1275,10 +1304,17 @@ def candidate_detail(request, pk):
     for ch in change_history:
         ch['date'] = ch['changed_at']
         history_events.append(ch)
+    for comment in comments:
+        comment['date'] = comment['created_at']
+        history_events.append(comment)
     for interview in interviews:
         interview['date'] = interview['created_at']
         history_events.append(interview)
     history_events = sorted(history_events, key=lambda x: x.get('date') or x.get('created_at'))
+
+    # Считаем количество комментариев и интервью
+    comments_count = sum(1 for e in history_events if e.get('type') == 'comment')
+    interviews_count = sum(1 for e in history_events if e.get('type') == 'interview')
 
     return render(request, 'positions/candidate_detail.html', {
         'candidate': candidate,
@@ -1287,13 +1323,24 @@ def candidate_detail(request, pk):
         'interviews': interviews,  # для обратной совместимости, можно убрать позже
         'change_history': change_history,  # для обратной совместимости, можно убрать позже
         'history_events': history_events,
+        'comments_count': comments_count,
+        'interviews_count': interviews_count,
     })
 
 @require_http_methods(["POST"])
 def candidate_file_delete(request, file_id):
     file = get_object_or_404(CandidateFile, id=file_id)
+    candidate = file.candidate
+    file_name = file.file.name.split('/')[-1]
     file.file.delete(save=False)
     file.delete()
+    # История изменений
+    CandidateChangeHistory.objects.create(
+        candidate=candidate,
+        field='file',
+        old_value=f'Удалён файл: {file_name}',
+        new_value=''
+    )
     return JsonResponse({'success': True})
 
 @require_http_methods(["POST"])
@@ -1303,7 +1350,7 @@ def candidate_update(request, pk):
     value = None
 
     # Определяем, какое поле редактируется
-    for f in ['email', 'phone', 'telegram', 'desired_position', 'notes']:
+    for f in ['full_name', 'email', 'phone', 'telegram', 'desired_position', 'notes']:
         if f in request.POST:
             field = f
             value = request.POST.get(f)
@@ -1318,7 +1365,11 @@ def candidate_update(request, pk):
     # Валидация и обновление
     try:
         old_value = None
-        if field == 'email':
+        new_value_for_history = value
+        if field == 'full_name':
+            old_value = candidate.full_name
+            candidate.full_name = value
+        elif field == 'email':
             old_value = candidate.email
             if value and '@' not in value:
                 return JsonResponse({'success': False, 'error': 'Некорректный email'})
@@ -1345,6 +1396,7 @@ def candidate_update(request, pk):
                     return JsonResponse({'success': False, 'error': 'Должность не найдена'})
             else:
                 candidate.desired_position = None
+            new_value_for_history = candidate.desired_position.name if candidate.desired_position else None
         elif field == 'notes':
             old_value = candidate.notes
             candidate.notes = value
@@ -1354,13 +1406,13 @@ def candidate_update(request, pk):
         else:
             return JsonResponse({'success': False, 'error': 'Неизвестное поле'})
         candidate.save()
-        # Сохраняем историю изменений
-        if field != 'resume':  # Не сохраняем историю для файла
+        # Сохраняем историю изменений только если значение реально изменилось
+        if field != 'resume' and (str(old_value) != str(new_value_for_history)):
             CandidateChangeHistory.objects.create(
                 candidate=candidate,
                 field=field,
                 old_value=old_value,
-                new_value=value if field != 'desired_position' else (candidate.desired_position.name if candidate.desired_position else None)
+                new_value=new_value_for_history
             )
         return JsonResponse({'success': True})
     except Exception as e:
@@ -1396,3 +1448,42 @@ def candidate_tasks(request, pk):
             due_date=due_date or None
         )
         return JsonResponse({'success': True, 'task': model_to_dict(task)})
+
+@login_required
+@require_http_methods(["POST"])
+def add_candidate_comment(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    text = request.POST.get('text', '').strip()
+    if not text:
+        return JsonResponse({'success': False, 'error': 'Комментарий не может быть пустым'})
+    comment = CandidateComment.objects.create(
+        candidate=candidate,
+        author=request.user,
+        text=text
+    )
+    return JsonResponse({
+        'success': True,
+        'author': comment.author.get_full_name() or comment.author.username,
+        'text': comment.text,
+        'created_at': comment.created_at.strftime('%d.%m.%Y %H:%M')
+    })
+
+@csrf_exempt
+@login_required
+def edit_candidate_comment(request, comment_id):
+    import json
+    try:
+        comment = CandidateComment.objects.get(id=comment_id)
+        if comment.author != request.user:
+            return JsonResponse({'success': False, 'error': 'Нет прав на редактирование'}, status=403)
+        data = json.loads(request.body)
+        text = data.get('text', '').strip()
+        if not text:
+            return JsonResponse({'success': False, 'error': 'Комментарий не может быть пустым'})
+        comment.text = text
+        comment.save()
+        return JsonResponse({'success': True, 'text': comment.text})
+    except CandidateComment.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Комментарий не найден'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)

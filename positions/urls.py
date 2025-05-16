@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import add_candidate_comment, edit_candidate_comment
 
 app_name = 'positions'
 
@@ -53,4 +54,6 @@ urlpatterns = [
     path('candidate/<int:pk>/files/upload/', views.candidate_files_upload, name='candidate_files_upload'),
     path('candidate/file/<int:file_id>/delete/', views.candidate_file_delete, name='candidate_file_delete'),
     path('candidate/<int:pk>/tasks/', views.candidate_tasks, name='candidate_tasks'),
+    path('candidate/<int:pk>/add_comment/', add_candidate_comment, name='add_candidate_comment'),
+    path('candidate/comment/<int:comment_id>/edit/', edit_candidate_comment, name='edit_candidate_comment'),
 ] 
