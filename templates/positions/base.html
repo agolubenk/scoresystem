@@ -4,263 +4,339 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Система управления должностями{% endblock %}</title>
-    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
+            background-color: #f4f6fb;
             min-height: 100vh;
-            background-color: #f8f9fa;
-            padding-top: 56px; /* Высота навбара */
-            color: #212529; /* Цвет текста по умолчанию */
         }
-        
-        .navbar {
-            background-color: #212529;
-            box-shadow: 0 2px 4px rgba(0,0,0,.08);
-        }
-        
-        .navbar-brand {
-            font-weight: 600;
+        .sidebar {
+            position: fixed;
+            top: 96px;
+            left: 0;
+            height: calc(100vh - 96px);
+            width: 80px;
+            background: #2563eb;
             color: #fff;
-            font-size: 1.25rem;
+            z-index: 1030;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+            border-top-right-radius: 1.5rem;
+            border-bottom-right-radius: 0;
+            overflow: hidden;
+            transition: width 0.2s cubic-bezier(.4,0,.2,1);
+            border-right: 1px solid #e5e7eb;
         }
-        
-        .nav-link {
-            color: #fff;
-            opacity: 0.8;
-            transition: all 0.3s;
-            padding: 0.5rem 1rem;
+        .sidebar:hover,
+        .sidebar.force-open {
+            width: 240px;
+        }
+        .sidebar:not(:hover):not(.force-open) {
+            width: 80px;
+        }
+        .sidebar .nav {
+            flex-direction: column;
+            gap: 0.25rem;
+            padding-left: 0;
+            margin-bottom: 2rem;
+        }
+        .sidebar .nav-link {
+            color: #ffffff;
             border-radius: 0.25rem;
-            margin: 0 0.25rem;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: background 0.2s, color 0.2s, padding 0.2s;
+            justify-content: center;
+            padding: 0.75rem 0.5rem;
+            position: relative;
         }
-        
-        .nav-link:hover {
-            opacity: 1;
-            background-color: rgba(255, 255, 255, 0.1);
+        .sidebar:hover .nav-link,
+        .sidebar.force-open .nav-link {
+            justify-content: flex-start;
+            padding: 0.75rem 1.5rem;
         }
-        
-        .nav-link.active {
+        .sidebar .nav-link span {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            transition: opacity 0.2s, width 0.2s;
+        }
+        .sidebar:hover .nav-link span,
+        .sidebar.force-open .nav-link span {
             opacity: 1;
-            background-color: rgba(255, 255, 255, 0.2);
+            width: auto;
+        }
+        /* Кружок вокруг иконки для активного пункта только в свернутом меню */
+        .sidebar:not(:hover):not(.force-open) .nav-link.active i {
+            background: #e0e7ef;
+            color: #2563eb;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(37,99,235,0.10);
+            font-size: 1.25rem;
+            margin: 0 auto;
+            transition: background 0.2s, color 0.2s;
+            position: relative;
+            z-index: 1;
+            padding: 0;
+        }
+        .sidebar:not(:hover):not(.force-open) .nav-link.active {
+            background: none;
+            color: #fff;
+        }
+        /* Обычное выделение фоном при раскрытом меню */
+        .sidebar:hover .nav-link.active,
+        .sidebar.force-open .nav-link.active {
+            background: #1e40af;
+            color: #fff;
+        }
+        .sidebar .nav-link i {
+            font-size: 1.2rem;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        }
+        .main {
+            margin-left: 80px;
+            min-height: 100vh;
+            background: #f4f6fb;
+            transition: margin-left 0.2s cubic-bezier(.4,0,.2,1);
+            padding-top: 64px;
+        }
+        .topbar {
+            height: 64px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            z-index: 1050;
+        }
+        .topbar .left {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+        .topbar .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2563eb;
+            letter-spacing: 1px;
+        }
+        .topbar .logo i {
+            font-size: 1.5rem;
+        }
+        .topbar .system-title {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #2563eb;
+            letter-spacing: 1px;
+        }
+        .topbar .user-dropdown .btn-link {
+            color: #2563eb;
             font-weight: 500;
         }
-        
-        .nav-link i {
-            margin-right: 0.5rem;
-            font-size: 1.1rem;
-        }
-        
         .main-content {
-            padding: 2rem;
+            padding: 2rem 2.5rem 2rem 2.5rem;
         }
-        
         .card {
             border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,.08);
-            border-radius: 0.5rem;
-            background-color: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
-        
-        .card-header {
-            border-radius: 0.5rem 0.5rem 0 0 !important;
-            padding: 1rem 1.25rem;
-            background-color: #fff;
-            border-bottom: 1px solid rgba(0,0,0,.125);
-        }
-        
-        .card-body {
-            padding: 1.25rem;
-            background-color: #fff;
-        }
-        
-        .user-dropdown .btn-link {
-            color: #fff;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            transition: all 0.3s;
-        }
-        
-        .user-dropdown .btn-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .user-dropdown .dropdown-menu {
-            margin-top: 0.5rem;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,.08);
-            border-radius: 0.5rem;
-        }
-        
-        .dropdown-item {
-            padding: 0.5rem 1rem;
-            transition: all 0.3s;
-        }
-        
-        .dropdown-item:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .dropdown-item i {
-            margin-right: 0.5rem;
-            width: 1.25rem;
-            text-align: center;
-        }
-        
         .alert {
-            border: none;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        @media (max-width: 991.98px) {
+            .sidebar {
+                width: 64px;
+                min-width: 64px;
+                align-items: center;
+            }
+            .sidebar .nav-link {
+                justify-content: center;
+                padding: 0.75rem 0.5rem;
+            }
+            .sidebar .nav-link span {
+                display: none;
+            }
+            .main {
+                margin-left: 64px;
+            }
+        }
+        .topbar-nav .btn {
             border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,.08);
+            background: #f4f6fb;
+            color: #2563eb;
+            border: none;
+            font-size: 1rem;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
         }
-        
-        .btn {
-            border-radius: 0.25rem;
-            padding: 0.375rem 0.75rem;
-            font-weight: 500;
-            transition: all 0.3s;
+        .topbar-nav .btn:hover, .topbar-nav .btn:focus {
+            background: #e0e7ef;
+            color: #1e40af;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.08);
         }
-        
-        .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
+        .topbar-nav .btn i {
+            font-size: 1.2rem;
         }
-        
-        .btn-primary:hover {
-            background-color: #0b5ed7;
-            border-color: #0a58ca;
+        .theme-toggle-fixed {
+            position: fixed;
+            left: 18px;
+            bottom: 32px;
+            z-index: 2000;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: #c7d2fe;
+            background: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            font-size: 1.3rem;
         }
-        
-        .table {
-            margin-bottom: 0;
-            color: #212529;
+        .theme-toggle-fixed:hover, .theme-toggle-fixed:focus {
+            background: #e0e7ef;
+            color: #2563eb;
         }
-        
-        .table th {
-            font-weight: 600;
-            background-color: #f8f9fa;
-            color: #212529;
+        /* Кастомное выпадающее меню для topbar */
+        .custom-dropdown {
+            position: relative;
         }
-        
-        .table td {
-            color: #212529;
+        .dropdown-toggle-custom::after {
+            content: '';
+            display: inline-block;
+            margin-left: 0.5em;
             vertical-align: middle;
+            border-top: 0.4em solid #2563eb;
+            border-right: 0.4em solid transparent;
+            border-left: 0.4em solid transparent;
         }
-        
-        .form-control {
-            border-radius: 0.25rem;
-            border: 1px solid #ced4da;
-            padding: 0.375rem 0.75rem;
-            transition: all 0.3s;
-            color: #212529;
+        .dropdown-menu-custom {
+            display: none;
+            position: absolute;
+            top: 110%;
+            left: 0;
+            width: 100%;
+            background: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(37,99,235,0.10);
+            padding: 0.5rem 0;
+            z-index: 3000;
         }
-        
-        .form-control:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        .custom-dropdown.open .dropdown-menu-custom {
+            display: block;
         }
-        
-        /* Стили для страницы должностей */
-        .position-card {
-            background-color: #fff;
-            margin-bottom: 1rem;
+        .dropdown-item-custom {
+            padding: 0.75rem 1.5rem;
+            color: #2563eb;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            font-size: 1.05rem;
+            background: none;
+            transition: background 0.2s, color 0.2s;
+            margin: 0 0.5rem;
         }
-        
-        .position-card .card-title {
-            color: #212529;
-            margin-bottom: 0.5rem;
+        .dropdown-item-custom:hover, .dropdown-item-custom:focus {
+            background: #e0e7ef;
+            color: #1e40af;
         }
-        
-        .position-card .card-text {
-            color: #6c757d;
-        }
-        
-        .position-card .badge {
-            font-size: 0.875rem;
-            padding: 0.35em 0.65em;
-        }
-        
-        .position-card .btn-group {
-            margin-top: 1rem;
-        }
-        
-        .position-card .btn-group .btn {
-            margin-right: 0.5rem;
-        }
-        
-        .position-card .btn-group .btn:last-child {
-            margin-right: 0;
+        .dropdown-item-custom i {
+            font-size: 1.2rem;
         }
     </style>
-    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Верхняя панель -->
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="bi bi-building"></i> HR Система
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'grades' %}active{% endif %}" 
-                           href="{% url 'positions:grades' %}">
-                            <i class="bi bi-bar-chart-steps"></i> Грейды
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column" id="sidebar">
+        <ul class="nav flex-column mb-2">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'interview_list' %}active{% endif %}" href="{% url 'positions:interview_list' %}">
+                    <i class="bi bi-list-ul"></i> <span>Интервью</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'positions:index' %}">
+                    <i class="bi bi-speedometer2"></i> <span>Системы оценки</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'candidate_list' %}active{% endif %}" href="{% url 'positions:candidate_list' %}">
+                    <i class="bi bi-person-lines-fill"></i> <span>Кандидаты</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <a href="#" class="theme-toggle-fixed" title="Сменить тему">
+        <i class="bi bi-moon"></i>
+    </a>
+    <!-- Main content -->
+    <div class="main">
+        <!-- Topbar -->
+        <div class="topbar">
+            <div class="left">
+                <div class="logo">
+                    <i class="bi bi-building"></i>
+                    <span>HR Система</span>
+                </div>
+                <nav class="topbar-nav d-flex align-items-center ms-4 gap-2 position-relative">
+                    <a href="{% url 'positions:interview_list' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                        <i class="bi bi-list-ul"></i>
+                        <span>Интервью</span>
+                    </a>
+                    <a href="{% url 'positions:questions' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                        <i class="bi bi-question-circle"></i>
+                        <span>Вопросы</span>
+                    </a>
+                    <div class="custom-dropdown" id="specDropdown">
+                        <a href="#" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium dropdown-toggle-custom" id="specDropdownBtn">
+                            <i class="bi bi-diagram-3"></i>
+                            <span>Специализации и грейды</span>
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'positions' %}active{% endif %}" 
-                           href="{% url 'positions:positions' %}">
-                            <i class="bi bi-person-badge"></i> Должности
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'parameters' %}active{% endif %}" 
-                           href="{% url 'positions:parameters' %}">
-                            <i class="bi bi-list-check"></i> Параметры
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'questions' %}active{% endif %}" 
-                           href="{% url 'positions:questions' %}">
-                            <i class="bi bi-question-circle"></i> Вопросы
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'score_matrices' %}active{% endif %}" 
-                           href="{% url 'positions:score_matrices' %}">
-                            <i class="bi bi-table"></i> Матрицы
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'interview_list' %}active{% endif %}" 
-                           href="{% url 'positions:interview_list' %}">
-                            <i class="bi bi-list-ul"></i> Список интервью
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'interview_create' %}active{% endif %}" 
-                           href="{% url 'positions:interview_create' %}">
-                            <i class="bi bi-person-plus"></i> Новое интервью
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'candidate_list' %}active{% endif %}" href="{% url 'positions:candidate_list' %}">
-                            <i class="bi bi-person-lines-fill"></i> Кандидаты
-                        </a>
-                    </li>
-                </ul>
+                        <div class="dropdown-menu-custom" id="specDropdownMenu">
+                            <a href="{% url 'positions:grades' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                <i class="bi bi-bar-chart-steps"></i> <span>Грейды</span>
+                            </a>
+                            <a href="{% url 'positions:positions' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                <i class="bi bi-person-badge"></i> <span>Специализации</span>
+                            </a>
+                            <a href="{% url 'positions:parameters' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                <i class="bi bi-list-check"></i> <span>Параметры</span>
+                            </a>
+                            <a href="{% url 'positions:score_matrices' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                <i class="bi bi-table"></i> <span>Матрицы</span>
+                            </a>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <a href="#" class="text-decoration-none position-relative">
+                    <i class="bi bi-bell fs-5"></i>
+                    <!-- Пример уведомления -->
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">3</span>
+                </a>
                 {% if user.is_authenticated %}
-                <div class="user-dropdown">
+                <div class="user-dropdown dropdown">
                     <button class="btn btn-link dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> {{ user.username }}
                     </button>
@@ -273,28 +349,61 @@
                 {% endif %}
             </div>
         </div>
-    </nav>
-
-    <!-- Основной контент -->
-    <main class="main-content">
-        {% if messages %}
-        <div class="messages mb-4">
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <main class="main-content">
+            {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        
-        {% block content %}{% endblock %}
-    </main>
-
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
     <!-- Bootstrap 5 JS и зависимости -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-    
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const themeBtn = document.querySelector('.theme-toggle-fixed');
+        themeBtn.addEventListener('mouseenter', () => {
+            sidebar.classList.add('force-open');
+        });
+        themeBtn.addEventListener('mouseleave', () => {
+            sidebar.classList.remove('force-open');
+        });
+        sidebar.addEventListener('mouseenter', () => {
+            sidebar.classList.add('force-open');
+        });
+        sidebar.addEventListener('mouseleave', () => {
+            sidebar.classList.remove('force-open');
+        });
+        // Кастомное выпадающее меню для topbar (Специализации и грейды)
+        const specBtn = document.getElementById('specDropdownBtn');
+        const specDropdown = document.getElementById('specDropdown');
+        const specMenu = document.getElementById('specDropdownMenu');
+        let specDropdownOpen = false;
+        function openSpecDropdown() {
+            specDropdown.classList.add('open');
+            specDropdownOpen = true;
+        }
+        function closeSpecDropdown() {
+            specDropdown.classList.remove('open');
+            specDropdownOpen = false;
+        }
+        specBtn.addEventListener('mouseenter', openSpecDropdown);
+        specBtn.addEventListener('focus', openSpecDropdown);
+        specDropdown.addEventListener('mouseleave', closeSpecDropdown);
+        specDropdown.addEventListener('blur', closeSpecDropdown);
+        document.addEventListener('mousedown', function(e) {
+            if (specDropdownOpen && !specDropdown.contains(e.target)) {
+                closeSpecDropdown();
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html> 

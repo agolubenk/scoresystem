@@ -1,0 +1,80 @@
+{% extends "positions/base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Добро пожаловать!</h2>
+    <div class="row g-4">
+        <div class="col-12">
+            <a href="{% url 'positions:interview_list' %}" class="menu-card">
+                <i class="bi bi-list-ul"></i>
+                <span>Интервью</span>
+            </a>
+        </div>
+        <div class="col-12">
+            <a href="{% url 'positions:candidate_list' %}" class="menu-card">
+                <i class="bi bi-person-lines-fill"></i>
+                <span>Кандидаты</span>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <a href="{% url 'positions:grades' %}" class="menu-card">
+                <i class="bi bi-bar-chart-steps"></i>
+                <span>Грейды</span>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <a href="{% url 'positions:positions' %}" class="menu-card">
+                <i class="bi bi-person-badge"></i>
+                <span>Специализации</span>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <a href="{% url 'positions:parameters' %}" class="menu-card">
+                <i class="bi bi-list-check"></i>
+                <span>Параметры</span>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <a href="{% url 'positions:score_matrices' %}" class="menu-card">
+                <i class="bi bi-table"></i>
+                <span>Матрицы</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_css %}
+<style>
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 12px rgba(37,99,235,0.08);
+    padding: 2.5rem 1rem 1.5rem 1rem;
+    text-decoration: none;
+    color: #2563eb;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+    min-height: 180px;
+    margin-bottom: 0.5rem;
+}
+.menu-card:hover, .menu-card:focus {
+    background: #e0e7ef;
+    color: #1e40af;
+    box-shadow: 0 4px 24px rgba(37,99,235,0.16);
+}
+.menu-card i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+.menu-card span {
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %} 

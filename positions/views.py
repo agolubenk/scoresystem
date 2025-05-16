@@ -1487,3 +1487,6 @@ def edit_candidate_comment(request, comment_id):
         return JsonResponse({'success': False, 'error': 'Комментарий не найден'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+def index(request):
+    return render(request, 'positions/index.html')

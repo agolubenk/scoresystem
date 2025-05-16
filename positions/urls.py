@@ -5,6 +5,7 @@ from .views import add_candidate_comment, edit_candidate_comment
 app_name = 'positions'
 
 urlpatterns = [
+    path('', views.index, name='index'),
     path('grades/', views.GradeListView.as_view(), name='grades'),
     path('grades/<int:pk>/', views.GradeListView.as_view(), name='grade_detail'),
     path('positions/', views.positions_list, name='positions'),
