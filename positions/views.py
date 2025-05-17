@@ -35,7 +35,7 @@ print('GEMINI_API_KEY:', GEMINI_API_KEY)
 
 class GradeListView(ListView):
     model = Grade
-    template_name = 'positions/grades.html'
+    template_name = 'evaluation/grades.html'
     context_object_name = 'grades'
 
     def get_context_data(self, **kwargs):
@@ -99,7 +99,7 @@ class GradeListView(ListView):
 class GradeCreateView(CreateView):
     model = Grade
     form_class = GradeForm
-    template_name = 'positions/grade_form.html'
+    template_name = 'evaluation/grade_form.html'
     success_url = '/grades/'
 
 def positions_list(request):
@@ -129,7 +129,7 @@ def positions_list(request):
         })
     grades_json = json.dumps(grades_data)
     
-    return render(request, 'positions/positions.html', {
+    return render(request, 'evaluation/positions.html', {
         'grades': grades,
         'positions_by_grade': positions_by_grade,
         'unique_positions': unique_positions,
@@ -299,7 +299,7 @@ def parameters(request):
         'parameters_by_grade': parameters_by_grade,
         'grades_json': json.dumps(list(grades.values('pk', 'name')))
     }
-    return render(request, 'positions/parameters.html', context)
+    return render(request, 'evaluation/parameters.html', context)
 
 @login_required
 @require_http_methods(['POST'])
@@ -425,7 +425,7 @@ def questions_list(request):
         'test_types': test_types
     }
     
-    return render(request, 'positions/questions.html', context)
+    return render(request, 'evaluation/questions.html', context)
 
 @require_http_methods(["POST"])
 def create_question(request):
@@ -545,7 +545,7 @@ def score_matrices(request):
         'positions': positions,
         'selected_position': selected_position
     }
-    return render(request, 'positions/score_matrices.html', context)
+    return render(request, 'evaluation/score_matrices.html', context)
 
 @login_required
 def create_score_matrix(request):
@@ -578,7 +578,7 @@ def create_score_matrix(request):
         return redirect('positions:edit_score_matrix', matrix_id=matrix.id)
     
     positions = Position.objects.all()
-    return render(request, 'positions/create_score_matrix.html', {'positions': positions})
+    return render(request, 'evaluation/create_score_matrix.html', {'positions': positions})
 
 @login_required
 def edit_score_matrix(request, matrix_id):
@@ -632,7 +632,7 @@ def edit_score_matrix(request, matrix_id):
         'matrix': matrix,
         'matrix_data': matrix_data
     }
-    return render(request, 'positions/edit_score_matrix.html', context)
+    return render(request, 'evaluation/edit_score_matrix.html', context)
 
 @login_required
 def delete_score_matrix(request, matrix_id):
@@ -660,7 +660,7 @@ def toggle_matrix_active(request, matrix_id):
 
 class InterviewCreateView(LoginRequiredMixin, CreateView):
     model = Interview
-    template_name = 'positions/interview_create.html'
+    template_name = 'interview/interview_create.html'
     fields = ['position', 'candidate_name', 'expected_grade', 'expected_salary', 'current_grade']
     success_url = '/interview/{pk}/conduct/'
     
@@ -676,7 +676,7 @@ class InterviewCreateView(LoginRequiredMixin, CreateView):
 
 class InterviewConductView(LoginRequiredMixin, UpdateView):
     model = Interview
-    template_name = 'positions/interview_conduct.html'
+    template_name = 'interview/interview_conduct.html'
     fields = []
     
     def get_context_data(self, **kwargs):
@@ -763,7 +763,7 @@ class InterviewConductView(LoginRequiredMixin, UpdateView):
 
 class InterviewResultView(LoginRequiredMixin, DetailView):
     model = Interview
-    template_name = 'positions/interview_result.html'
+    template_name = 'interview/interview_result.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -865,7 +865,7 @@ class InterviewResultView(LoginRequiredMixin, DetailView):
 
 class InterviewListView(LoginRequiredMixin, ListView):
     model = Interview
-    template_name = 'positions/interview_list.html'
+    template_name = 'interview/interview_list.html'
     context_object_name = 'interviews'
     paginate_by = 10
     
@@ -1111,7 +1111,7 @@ def rerun_ai_analysis(request, pk):
 
 class CandidateListView(LoginRequiredMixin, ListView):
     model = Candidate
-    template_name = 'positions/candidate_list.html'
+    template_name = 'candidates/candidate_list.html'
     context_object_name = 'candidates'
     paginate_by = 20
     
@@ -1125,23 +1125,23 @@ class CandidateListView(LoginRequiredMixin, ListView):
 class CandidateCreateView(LoginRequiredMixin, CreateView):
     model = Candidate
     form_class = CandidateForm
-    template_name = 'positions/candidate_form.html'
+    template_name = 'candidates/candidate_form.html'
     success_url = reverse_lazy('positions:candidate_list')
 
 class CandidateUpdateView(LoginRequiredMixin, UpdateView):
     model = Candidate
     form_class = CandidateForm
-    template_name = 'positions/candidate_form.html'
+    template_name = 'candidates/candidate_form.html'
     success_url = reverse_lazy('positions:candidate_list')
 
 class CandidateDetailView(LoginRequiredMixin, DetailView):
     model = Candidate
-    template_name = 'positions/candidate_detail.html'
+    template_name = 'candidates/candidate_detail.html'
     context_object_name = 'candidate'
 
 class CandidateDeleteView(LoginRequiredMixin, DeleteView):
     model = Candidate
-    template_name = 'positions/candidate_confirm_delete.html'
+    template_name = 'candidates/candidate_confirm_delete.html'
     success_url = reverse_lazy('positions:candidate_list')
 
 class CandidateResumePreviewView(View):
@@ -1163,7 +1163,7 @@ def candidate_resume_view(request, pk):
         resume = request.FILES['resume']
         candidate.resume.save(resume.name, resume, save=True)
         return redirect('positions:candidate_resume_view', pk=pk)
-    return render(request, 'positions/candidate_resume_view.html', {'candidate': candidate, 'resume_exists': resume_exists})
+    return render(request, 'candidates/candidate_resume_view.html', {'candidate': candidate, 'resume_exists': resume_exists})
 
 @require_POST
 @login_required
@@ -1493,7 +1493,7 @@ def edit_candidate_comment(request, comment_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 def index(request):
-    return render(request, 'positions/index.html')
+    return render(request, 'evaluation/index.html')
 
 @csrf_exempt
 def reorder_grades(request):
@@ -1593,7 +1593,7 @@ def vacancies_list(request):
         vacancy_grades = vacancy_grades.filter(vacancy__position_id=position_id)
     grades = Grade.objects.all()
     positions = Position.objects.all()
-    return render(request, 'positions/vacancies_list.html', {
+    return render(request, 'evaluation/vacancies_list.html', {
         'vacancy_grades': vacancy_grades,
         'grades': grades,
         'positions': positions,
@@ -1607,7 +1607,7 @@ def vacancy_detail(request, pk):
     vacancy = get_object_or_404(Vacancy, pk=pk)
     grades = Grade.objects.all()
     vacancy_grades = VacancyGrade.objects.filter(vacancy=vacancy).select_related('grade')
-    return render(request, 'positions/vacancy_detail.html', {
+    return render(request, 'evaluation/vacancy_detail.html', {
         'vacancy': vacancy,
         'vacancy_grades': vacancy_grades,
         'grades': grades,
@@ -1623,7 +1623,7 @@ def vacancy_create(request):
             return redirect('positions:vacancy_detail', pk=vacancy.pk)
     else:
         form = VacancyForm()
-    return render(request, 'positions/vacancy_form.html', {'form': form})
+    return render(request, 'evaluation/vacancy_form.html', {'form': form})
 
 @login_required
 def vacancy_edit(request, pk):
@@ -1636,7 +1636,7 @@ def vacancy_edit(request, pk):
             return redirect('positions:vacancy_detail', pk=vacancy.pk)
     else:
         form = VacancyForm(instance=vacancy)
-    return render(request, 'positions/vacancy_form.html', {'form': form, 'vacancy': vacancy})
+    return render(request, 'evaluation/vacancy_form.html', {'form': form, 'vacancy': vacancy})
 
 @login_required
 def vacancy_delete(request, pk):
@@ -1645,7 +1645,7 @@ def vacancy_delete(request, pk):
         vacancy.delete()
         messages.success(request, 'Вакансия удалена.')
         return redirect('positions:vacancies_list')
-    return render(request, 'positions/vacancy_confirm_delete.html', {'vacancy': vacancy})
+    return render(request, 'evaluation/vacancy_confirm_delete.html', {'vacancy': vacancy})
 
 @login_required
 def profile_detail(request, vacancy_id):
@@ -1663,7 +1663,6 @@ def profile_detail(request, vacancy_id):
             soft_skills = pg.soft_meta_skills.split('\n') if pg.soft_meta_skills else []
             soft_levels = pg.hard_requirements.split('\n') if pg.hard_requirements else []
             pg.soft_meta_skills_table = list(zip(soft_skills, soft_levels))
-    # Новый флаг для шаблона: есть ли незаполнённые грейды (учитываем пустые/отсутствующие поля)
     def is_profile_grade_filled(pg):
         def has_nonempty_skill(skills_str):
             if not skills_str:
@@ -1675,10 +1674,9 @@ def profile_detail(request, vacancy_id):
             has_nonempty_skill(pg.soft_meta_skills) and
             pg.notes and pg.notes.strip()
         )
-        print(f"grade={getattr(pg, 'grade', None)}, general_description={repr(pg.general_description)}, hard_skills={repr(pg.hard_skills)}, soft_meta_skills={repr(pg.soft_meta_skills)}, notes={repr(pg.notes)}, filled={filled}")
         return filled
     need_ai_generate = any(not is_profile_grade_filled(pg) for pg in profile_grades)
-    return render(request, 'positions/profile_detail.html', {
+    return render(request, 'evaluation/profile_detail.html', {
         'vacancy': vacancy,
         'profile': profile,
         'grades': grades,
@@ -1699,7 +1697,7 @@ def profile_edit(request, vacancy_id):
             return redirect('positions:profile_detail', vacancy_id=vacancy.pk)
     else:
         form = PositionProfileForm(instance=profile)
-    return render(request, 'positions/profile_form.html', {'form': form, 'vacancy': vacancy, 'profile': profile})
+    return render(request, 'evaluation/profile_form.html', {'form': form, 'vacancy': vacancy, 'profile': profile})
 
 def ensure_profile_grades():
     from .models import PositionProfile, Grade, PositionProfileGrade
@@ -1721,7 +1719,7 @@ def profiles_list(request):
         profile_grades = profile_grades.filter(vacancy__position_id=position_id)
     grades = Grade.objects.all()
     positions = Position.objects.all()
-    return render(request, 'positions/profiles_list.html', {
+    return render(request, 'evaluation/profiles_list.html', {
         'profile_grades': profile_grades,
         'grades': grades,
         'positions': positions,
