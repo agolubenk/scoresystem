@@ -609,6 +609,36 @@
             border: 2px solid #818cf8;
             box-shadow: 0 2px 12px rgba(129,140,248,0.15);
         }
+
+        .tab-content, .tab-pane, .card-body {
+            background: var(--bg-secondary) !important;
+            color: var(--dropdown-text) !important;
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--dropdown-text) !important;
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+        }
+        .nav-tabs .nav-link.active {
+            background: var(--dropdown-hover-bg) !important;
+            color: var(--btn-primary-hover-bg) !important;
+            border-color: var(--btn-primary-bg) var(--btn-primary-bg) var(--bg-secondary) !important;
+        }
+        [data-theme="dark"] .tab-content, 
+        [data-theme="dark"] .tab-pane, 
+        [data-theme="dark"] .card-body {
+            background: var(--bg-secondary) !important;
+            color: var(--dropdown-text) !important;
+        }
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: var(--dropdown-text) !important;
+            background: var(--bg-secondary) !important;
+        }
+        [data-theme="dark"] .nav-tabs .nav-link.active {
+            background: var(--dropdown-hover-bg) !important;
+            color: var(--btn-primary-hover-bg) !important;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -671,6 +701,12 @@
                             </a>
                             <a href="{% url 'positions:score_matrices' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
                                 <i class="bi bi-table"></i> <span>Матрицы</span>
+                            </a>
+                            <a href="{% url 'positions:vacancies_list' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                <i class="bi bi-briefcase"></i> <span>Вакансии</span>
+                            </a>
+                            <a href="{% url 'positions:profiles_list' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                <i class="bi bi-person-vcard"></i> <span>Профили должностей</span>
                             </a>
                         </div>
                     </div>

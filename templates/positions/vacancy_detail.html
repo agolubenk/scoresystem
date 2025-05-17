@@ -1,0 +1,207 @@
+{% extends 'positions/base.html' %}
+{% block title %}Вакансия: {{ vacancy.name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-body">
+            <h2 class="card-title mb-2">{{ vacancy.name }}</h2>
+            <p class="text-muted mb-1">Специализация: <b>{{ vacancy.position.name }}</b></p>
+            <div class="editable-field" data-type="vacancy" data-id="{{ vacancy.id }}" data-field="description">{{ vacancy.description|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+            <div class="d-flex gap-2 mt-3 mb-4">
+                <a href="{% url 'positions:vacancy_edit' vacancy.pk %}" class="btn btn-primary"><i class="bi bi-pencil"></i> Редактировать</a>
+                <a href="{% url 'positions:vacancy_delete' vacancy.pk %}" class="btn btn-danger"><i class="bi bi-trash"></i> Удалить</a>
+                {% if vacancy.profile %}
+                <a href="{% url 'positions:profile_detail' vacancy.pk %}" class="btn btn-outline-secondary"><i class="bi bi-person-vcard"></i> Профиль должности</a>
+                {% else %}
+                <a href="{% url 'positions:profile_edit' vacancy.pk %}" class="btn btn-outline-success"><i class="bi bi-plus-circle"></i> Создать профиль</a>
+                {% endif %}
+            </div>
+            {% if vacancy_grades %}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <ul class="nav nav-tabs mb-0" id="gradeTabs" role="tablist">
+                    {% for vg in vacancy_grades %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-{{ vg.grade.id }}" data-bs-toggle="tab" data-bs-target="#grade-{{ vg.grade.id }}" type="button" role="tab" aria-controls="grade-{{ vg.grade.id }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">{{ vg.grade.name }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <button class="btn btn-outline-primary btn-sm" id="copyButton" title="Копировать содержимое вкладки">
+                    <i class="bi bi-clipboard"></i> Копировать
+                </button>
+            </div>
+            <div class="tab-content" id="gradeTabsContent">
+                {% for vg in vacancy_grades %}
+                <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="grade-{{ vg.grade.id }}" role="tabpanel" aria-labelledby="tab-{{ vg.grade.id }}">
+                    <div class="mb-3">
+                        <h5>Описание для грейда: {{ vg.grade.name }}</h5>
+                        <div class="mb-3">
+                            <h6>Требования:</h6>
+                            <div class="editable-field" data-type="vacancy_grade" data-id="{{ vg.id }}" data-field="requirements">{{ vg.requirements|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Обязанности:</h6>
+                            <div class="editable-field" data-type="vacancy_grade" data-id="{{ vg.id }}" data-field="responsibilities">{{ vg.responsibilities|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Пожелания к кандидату:</h6>
+                            <div class="editable-field" data-type="vacancy_grade" data-id="{{ vg.id }}" data-field="wishes">{{ vg.wishes|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Условия труда:</h6>
+                            <div class="editable-field" data-type="vacancy_grade" data-id="{{ vg.id }}" data-field="work_conditions">{{ vg.work_conditions|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Зарплата:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="editable-field" data-type="vacancy_grade" data-id="{{ vg.id }}" data-field="salary_min">{{ vg.salary_min|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="editable-field" data-type="vacancy_grade" data-id="{{ vg.id }}" data-field="salary_max">{{ vg.salary_max|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info mt-4">Нет информации по грейдам для этой вакансии.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Активация вкладки по параметру grade в URL
+    const params = new URLSearchParams(window.location.search);
+    const gradeId = params.get('grade');
+    if (gradeId) {
+        const tabBtn = document.getElementById('tab-' + gradeId);
+        const tabPane = document.getElementById('grade-' + gradeId);
+        if (tabBtn && tabPane) {
+            var tab = new bootstrap.Tab(tabBtn);
+            tab.show();
+        }
+    }
+
+    // Обновление параметра grade в URL при переключении вкладки
+    document.querySelectorAll('#gradeTabs button[data-bs-toggle="tab"]').forEach(function(tabBtn) {
+        tabBtn.addEventListener('shown.bs.tab', function(e) {
+            const tabId = e.target.id.replace('tab-', '');
+            const url = new URL(window.location);
+            url.searchParams.set('grade', tabId);
+            window.history.replaceState({}, '', url);
+        });
+    });
+
+    // Обработка инлайн-редактирования
+    document.querySelectorAll('.editable-field').forEach(function(el) {
+        el.addEventListener('click', function() {
+            if (el.querySelector('textarea')) return;
+            const val = el.innerText.replace(/\s*\u270E.*/, '').trim();
+            const textarea = document.createElement('textarea');
+            textarea.value = val === '—' ? '' : val;
+            textarea.className = 'form-control';
+            textarea.rows = 4;
+            el.innerHTML = '';
+            el.appendChild(textarea);
+            textarea.focus();
+            textarea.addEventListener('blur', function() {
+                const type = el.dataset.type;
+                const url = type === 'vacancy' ? '/vacancy/update_field/' : '/vacancies/update_field/';
+                fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                    body: JSON.stringify({
+                        id: el.dataset.id,
+                        field: el.dataset.field,
+                        value: textarea.value
+                    })
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        el.innerHTML = (data.value || '—').replace(/\n/g, '<br>') + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                    } else {
+                        alert('Ошибка при сохранении: ' + (data.error || 'Неизвестная ошибка'));
+                        el.innerHTML = val + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                    }
+                }).catch(error => {
+                    alert('Ошибка при сохранении: ' + error);
+                    el.innerHTML = val + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                });
+            });
+        });
+    });
+
+    // Обработка копирования содержимого вкладки
+    const copyButton = document.getElementById('copyButton');
+    if (copyButton) {
+        copyButton.addEventListener('click', function() {
+            const activeTab = document.querySelector('.tab-pane.show.active');
+            console.log('activeTab:', activeTab);
+            if (!activeTab) {
+                alert('Не найдена активная вкладка!');
+                return;
+            }
+
+            let text = '';
+            const gradeName = activeTab.querySelector('h5') ? activeTab.querySelector('h5').textContent : '';
+            text += gradeName + '\n\n';
+
+            const fields = activeTab.querySelectorAll('.editable-field');
+            console.log('fields:', fields);
+            fields.forEach(field => {
+                const label = field.previousElementSibling ? field.previousElementSibling.textContent : '';
+                let content = field.textContent
+                    .replace(/Ошибка при сохранении:.*$/m, '')
+                    .replace(/\u270E.*/g, '')
+                    .replace(/\s+$/g, '')
+                    .trim();
+                if (!content) content = '—';
+                if (label) {
+                    text += label + '\n' + content + '\n\n';
+                } else {
+                    text += content + '\n\n';
+                }
+            });
+
+            console.log('text to copy:', text);
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = copyButton.innerHTML;
+                copyButton.innerHTML = '<i class="bi bi-check"></i> Скопировано';
+                copyButton.classList.remove('btn-outline-primary');
+                copyButton.classList.add('btn-success');
+                setTimeout(() => {
+                    copyButton.innerHTML = originalText;
+                    copyButton.classList.remove('btn-success');
+                    copyButton.classList.add('btn-outline-primary');
+                }, 2000);
+            }).catch(err => {
+                console.error('Ошибка при копировании:', err);
+                alert('Не удалось скопировать текст');
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

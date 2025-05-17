@@ -1,0 +1,57 @@
+{% extends 'positions/base.html' %}
+{% block title %}Вакансии и профили должностей{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">{% if show_profiles %}Профили должностей{% else %}Вакансии{% endif %}</h1>
+        <a href="{% if show_profiles %}{% url 'positions:vacancy_create' %}?profile=1{% else %}{% url 'positions:vacancy_create' %}{% endif %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Добавить
+        </a>
+    </div>
+    <form method="get" class="mb-3 d-flex gap-2">
+      {% if show_profiles %}<input type="hidden" name="profiles" value="1">{% endif %}
+      <select name="position" class="form-select" onchange="this.form.submit()">
+        <option value="">Все специализации</option>
+        {% for pos in positions %}
+          <option value="{{ pos.id }}" {% if pos.id|stringformat:'s' == selected_position %}selected{% endif %}>{{ pos.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="grade" class="form-select" onchange="this.form.submit()">
+        <option value="">Все грейды</option>
+        {% for gr in grades %}
+          <option value="{{ gr.id }}" {% if gr.id|stringformat:'s' == selected_grade %}selected{% endif %}>{{ gr.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if vacancy_grades %}
+    <div class="row g-4">
+        {% for vg in vacancy_grades %}
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title">{{ vg.vacancy.position.name }} — {{ vg.grade.name }}</h5>
+                    <p class="card-text text-muted mb-2">Вакансия: {{ vg.vacancy.name }}</p>
+                    <p class="card-text small">{{ vg.vacancy.description|truncatechars:120 }}</p>
+                    {% if vg.salary_min or vg.salary_max %}
+                      <div class="mb-1"><b>ЗП:</b> {{ vg.salary_min }}–{{ vg.salary_max }}</div>
+                    {% endif %}
+                    <div class="mb-1"><b>Требования:</b> {{ vg.requirements|default:'—' }}</div>
+                    <div class="mb-1"><b>Обязанности:</b> {{ vg.responsibilities|default:'—' }}</div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <a href="{% url 'positions:vacancy_detail' vg.vacancy.pk %}" class="btn btn-outline-primary btn-sm">Подробнее</a>
+                        {% if vg.vacancy.profile %}
+                        <a href="{% url 'positions:profile_detail' vg.vacancy.pk %}" class="btn btn-outline-secondary btn-sm">Профиль</a>
+                        {% elif show_profiles %}
+                        <a href="{% url 'positions:profile_edit' vg.vacancy.pk %}" class="btn btn-outline-success btn-sm">Создать профиль</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info mt-4">Пока нет данных.</div>
+    {% endif %}
+</div>
+{% endblock %} 

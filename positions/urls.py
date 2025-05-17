@@ -20,6 +20,8 @@ urlpatterns = [
     path('parameters/descriptions/create/', views.create_parameter_description, name='create_parameter_description'),
     path('parameters/descriptions/<int:description_id>/update/', views.update_parameter_description, name='update_parameter_description'),
     path('parameters/descriptions/<int:description_id>/delete/', views.delete_parameter_description, name='delete_parameter_description'),
+    path('parameters/export_excel/', views.export_parameters_excel, name='export_parameters_excel'),
+    path('parameters/import_excel/', views.import_parameters_excel, name='import_parameters_excel'),
     
     # URLs для вопросов интервью
     path('questions/', views.questions_list, name='questions'),
@@ -58,4 +60,16 @@ urlpatterns = [
     path('candidate/<int:pk>/add_comment/', add_candidate_comment, name='add_candidate_comment'),
     path('candidate/comment/<int:comment_id>/edit/', edit_candidate_comment, name='edit_candidate_comment'),
     path('grades/reorder/', views.reorder_grades, name='reorder_grades'),
+    # Вакансии и профили должностей
+    path('vacancies/', views.vacancies_list, name='vacancies_list'),
+    path('vacancies/create/', views.vacancy_create, name='vacancy_create'),
+    path('vacancies/<int:pk>/', views.vacancy_detail, name='vacancy_detail'),
+    path('vacancies/<int:pk>/edit/', views.vacancy_edit, name='vacancy_edit'),
+    path('vacancies/<int:pk>/delete/', views.vacancy_delete, name='vacancy_delete'),
+    path('profiles/<int:vacancy_id>/', views.profile_detail, name='profile_detail'),
+    path('profiles/<int:vacancy_id>/edit/', views.profile_edit, name='profile_edit'),
+    path('profiles/', views.profiles_list, name='profiles_list'),
+    path('profiles/update_field/', views.update_profile_grade_field, name='profile_grade_update_field'),
+    path('vacancies/update_field/', views.update_vacancy_grade_field, name='vacancy_grade_update_field'),
+    path('vacancy/update_field/', views.update_vacancy_field, name='vacancy_update_field'),
 ] 

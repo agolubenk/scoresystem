@@ -28,7 +28,10 @@
         left: 0;
         background-color: var(--bg-secondary);
         z-index: 1;
-        min-width: 180px;
+        min-width: 320px;
+        max-width: 420px;
+        width: 320px;
+        box-shadow: 2px 0 8px rgba(37,99,235,0.06);
     }
     .sticky-header {
         position: sticky;
@@ -58,6 +61,16 @@
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
+        background: var(--btn-primary-bg) !important;
+        color: var(--btn-primary-text) !important;
+        border: none;
+        font-weight: 500;
+        font-size: 1.08rem;
+        transition: background 0.2s, color 0.2s;
+    }
+    .add-row-container .btn:hover, .add-row-container .btn:focus {
+        background: var(--btn-primary-hover-bg) !important;
+        color: var(--btn-primary-hover-text) !important;
     }
     .table {
         margin-bottom: 0;
@@ -119,13 +132,45 @@
         color: #f1f5f9 !important;
     }
     .delete-position, .delete-row {
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s;
+        background: none !important;
+        border: none !important;
+        color: #dc3545 !important;
+        padding: 0.25rem 0.5rem;
+        min-width: 0;
+        box-shadow: none;
+        transition: background 0.2s, color 0.2s, border 0.2s;
+        font-size: 1.1rem;
+        display: inline-flex;
+        align-items: center;
     }
-    tr:hover .delete-position, tr:hover .delete-row {
-        opacity: 1;
-        pointer-events: auto;
+    .delete-position .confirm-text, .delete-row .confirm-text {
+        display: none;
+    }
+    .delete-position .bi, .delete-row .bi {
+        color: #dc3545 !important;
+        transition: color 0.2s;
+    }
+    .delete-position.confirm, .delete-row.confirm,
+    .delete-position:focus, .delete-row:focus,
+    .delete-position:hover, .delete-row:hover {
+        background: none !important;
+        border: 1.5px solid #dc3545 !important;
+        color: #dc3545 !important;
+        border-radius: 0.5rem;
+        outline: none;
+    }
+    .delete-position.confirm .bi, .delete-row.confirm .bi,
+    .delete-position:focus .bi, .delete-row:focus .bi,
+    .delete-position:hover .bi, .delete-row:hover .bi {
+        color: #dc3545 !important;
+    }
+    .delete-position.confirm .confirm-text, .delete-row.confirm .confirm-text,
+    .delete-position:focus .confirm-text, .delete-row:focus .confirm-text,
+    .delete-position:hover .confirm-text, .delete-row:hover .confirm-text {
+        display: inline;
+        margin-left: 0.5rem;
+        font-weight: 500;
+        font-size: 1rem;
     }
     h1 {
         color: var(--dropdown-text);
@@ -155,6 +200,63 @@
         opacity: 1;
         pointer-events: auto;
     }
+    .editable-cell[data-field="name"] {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: auto;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 0.5rem;
+    }
+    tr:hover .delete-position .bi,
+    tr:hover .delete-row .bi {
+        color: var(--bg-secondary) !important;
+    }
+    [data-theme="dark"] tr:hover .delete-position .bi,
+    [data-theme="dark"] tr:hover .delete-row .bi {
+        color: var(--bg-secondary) !important;
+    }
+    /* Иконка мусорки всегда красная во всех состояниях */
+    .delete-position .bi.bi-trash,
+    .delete-row .bi.bi-trash,
+    .delete-position.confirm .bi.bi-trash,
+    .delete-row.confirm .bi.bi-trash,
+    .delete-position:focus .bi.bi-trash,
+    .delete-row:focus .bi.bi-trash,
+    .delete-position:hover .bi.bi-trash,
+    .delete-row:hover .bi.bi-trash,
+    tr:hover .delete-position .bi.bi-trash,
+    tr:hover .delete-row .bi.bi-trash,
+    tr:focus .delete-position .bi.bi-trash,
+    tr:focus .delete-row .bi.bi-trash {
+        color: #dc3545 !important;
+        opacity: 1 !important;
+    }
+    .sticky-column {
+        background: var(--bg-secondary) !important;
+        z-index: 3;
+        box-shadow: 2px 0 8px rgba(37,99,235,0.06);
+    }
+    [data-theme="dark"] .sticky-column {
+        background: #1e293b !important;
+        z-index: 3;
+        box-shadow: 2px 0 12px rgba(0,0,0,0.18);
+    }
+    .table tr > .sticky-column,
+    .table tr > th.sticky-header {
+        background: var(--bg-secondary) !important;
+        z-index: 3;
+    }
+    [data-theme="dark"] .table tr > .sticky-column,
+    [data-theme="dark"] .table tr > th.sticky-header {
+        background: #1e293b !important;
+        z-index: 3;
+    }
+    .table td:not(.sticky-column), .table th:not(.sticky-header) {
+        text-align: center;
+        vertical-align: middle;
+    }
 </style>
 
 <div class="table-responsive">
@@ -169,8 +271,8 @@
                 </tr>
                 <tr>
                     {% for grade in grades %}
-                    <th class="text-center">Подтверждение</th>
-                    <th class="text-center">Повышение</th>
+                    <th class="text-center">Confirm</th>
+                    <th class="text-center">Promout</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -185,6 +287,7 @@
                                   contenteditable="true">{{ position_name }}</span>
                             <button type="button" class="btn btn-danger btn-sm delete-position" data-position-name="{{ position_name }}">
                                 <i class="bi bi-trash"></i>
+                                <span class="confirm-text">Подтвердить</span>
                             </button>
                         </div>
                     </td>
@@ -518,25 +621,22 @@ function showSaveNotification(message, isError = false) {
     setTimeout(() => notif.classList.remove('show'), 5000);
 }
 
-// Кнопка удаления с подтверждением
-let deleteConfirmTimeout = null;
+// Кнопка удаления всегда видна, подтверждение только через кнопку
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.delete-position, .delete-row');
     if (btn) {
         if (!btn.classList.contains('confirm')) {
             btn.classList.add('confirm');
-            btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Подтвердить';
-            clearTimeout(deleteConfirmTimeout);
-            deleteConfirmTimeout = setTimeout(() => {
-                btn.classList.remove('confirm');
-                btn.innerHTML = '<i class="bi bi-trash"></i>';
-            }, 3000);
+            clearTimeout(btn._confirmTimeout);
+            btn._confirmTimeout = setTimeout(() => btn.classList.remove('confirm'), 3000);
             e.preventDefault();
             return;
         }
-        // Если уже подтверждено — продолжаем стандартное удаление
         btn.classList.remove('confirm');
-        btn.innerHTML = '<i class="bi bi-trash"></i>';
+        // Удаляем строку на фронте
+        const row = btn.closest('tr');
+        if (row) row.remove();
+        // Здесь можно добавить ajax-запрос на удаление, если нужно
     }
 });
 </script>

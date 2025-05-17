@@ -5,7 +5,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.utils.decorators import method_decorator
 import json
 from django.core.serializers import serialize
-from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate, TestAnswer, CandidateFile, CandidateTask, CandidateChangeHistory, CandidateComment
+from django import forms
+from .models import Grade, Position, Parameter, ParameterDescription, PositionGrade, InterviewQuestion, ScoreMatrix, ScoreMatrixCell, ScoreMatrixSum, Interview, InterviewAnswer, InterviewResult, Candidate, TestAnswer, CandidateFile, CandidateTask, CandidateChangeHistory, CandidateComment, Vacancy, PositionProfile, VacancyGrade, PositionProfileGrade
 from .forms import GradeForm, CandidateForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -23,6 +24,8 @@ from django.views import View
 import re
 import phonenumbers
 from django.forms.models import model_to_dict
+from django.core.files.storage import default_storage
+from django.contrib import messages
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -968,7 +971,7 @@ def download_score_matrix(request, matrix_id):
     })
     
     # Заголовки
-    worksheet.write(0, 0, 'Параметр \ Вопрос', header_format)
+    worksheet.write(0, 0, 'Параметр \\ Вопрос', header_format)
     for col, question in enumerate(matrix_data['questions'], start=1):
         worksheet.write(0, col, question['text'], header_format)
     worksheet.write(0, len(matrix_data['questions']) + 1, 'Сумма', header_format)
@@ -1504,3 +1507,366 @@ def reorder_grades(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+@login_required
+def export_parameters_excel(request):
+    """Выгрузка параметров и описаний в Excel"""
+    grades = list(Grade.objects.all().order_by('order'))
+    parameters = Parameter.objects.all().order_by('name')
+    data = []
+    for param in parameters:
+        row = {'Параметр': param.name, 'Специализация': param.position.name if param.position else ''}
+        for grade in grades:
+            desc = ParameterDescription.objects.filter(parameter=param, grade=grade).first()
+            row[grade.name] = desc.description if desc else ''
+        data.append(row)
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Параметры')
+    output.seek(0)
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=parameters.xlsx'
+    return response
+
+@login_required
+@require_http_methods(["POST"])
+def import_parameters_excel(request):
+    """Загрузка параметров и описаний из Excel"""
+    excel_file = request.FILES.get('file')
+    if not excel_file:
+        return JsonResponse({'success': False, 'error': 'Файл не передан'})
+    try:
+        df = pd.read_excel(excel_file)
+        grades = {g.name: g for g in Grade.objects.all()}
+        for _, row in df.iterrows():
+            param_name = str(row.get('Параметр', '')).strip()
+            position_name = str(row.get('Специализация', '')).strip()
+            if not param_name:
+                continue
+            position = Position.objects.filter(name=position_name).first() if position_name else None
+            param, _ = Parameter.objects.get_or_create(name=param_name, defaults={'position': position})
+            if position and param.position != position:
+                param.position = position
+                param.save()
+            for grade_name, grade in grades.items():
+                if grade_name in row:
+                    desc_text = str(row[grade_name]).strip()
+                    if desc_text and desc_text != 'nan':
+                        desc, _ = ParameterDescription.objects.get_or_create(parameter=param, grade=grade)
+                        desc.description = desc_text
+                        desc.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+class VacancyForm(forms.ModelForm):
+    class Meta:
+        model = Vacancy
+        fields = ['name', 'position', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'position': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+
+class PositionProfileForm(forms.ModelForm):
+    class Meta:
+        model = PositionProfile
+        fields = ['profile_text']
+        widgets = {
+            'profile_text': forms.Textarea(attrs={'class': 'form-control', 'rows': 8}),
+        }
+
+@login_required
+def vacancies_list(request):
+    show_profiles = request.GET.get('profiles')
+    grade_id = request.GET.get('grade')
+    position_id = request.GET.get('position')
+    vacancy_grades = VacancyGrade.objects.select_related('vacancy', 'grade', 'vacancy__position', 'vacancy__profile')
+    if show_profiles:
+        vacancy_grades = vacancy_grades.filter(vacancy__profile__isnull=False)
+    if grade_id:
+        vacancy_grades = vacancy_grades.filter(grade_id=grade_id)
+    if position_id:
+        vacancy_grades = vacancy_grades.filter(vacancy__position_id=position_id)
+    grades = Grade.objects.all()
+    positions = Position.objects.all()
+    return render(request, 'positions/vacancies_list.html', {
+        'vacancy_grades': vacancy_grades,
+        'grades': grades,
+        'positions': positions,
+        'selected_grade': grade_id,
+        'selected_position': position_id,
+        'show_profiles': show_profiles,
+    })
+
+@login_required
+def vacancy_detail(request, pk):
+    vacancy = get_object_or_404(Vacancy, pk=pk)
+    grades = Grade.objects.all()
+    vacancy_grades = VacancyGrade.objects.filter(vacancy=vacancy).select_related('grade')
+    return render(request, 'positions/vacancy_detail.html', {
+        'vacancy': vacancy,
+        'vacancy_grades': vacancy_grades,
+        'grades': grades,
+    })
+
+@login_required
+def vacancy_create(request):
+    if request.method == 'POST':
+        form = VacancyForm(request.POST)
+        if form.is_valid():
+            vacancy = form.save()
+            messages.success(request, 'Вакансия успешно создана.')
+            return redirect('positions:vacancy_detail', pk=vacancy.pk)
+    else:
+        form = VacancyForm()
+    return render(request, 'positions/vacancy_form.html', {'form': form})
+
+@login_required
+def vacancy_edit(request, pk):
+    vacancy = get_object_or_404(Vacancy, pk=pk)
+    if request.method == 'POST':
+        form = VacancyForm(request.POST, instance=vacancy)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Вакансия обновлена.')
+            return redirect('positions:vacancy_detail', pk=vacancy.pk)
+    else:
+        form = VacancyForm(instance=vacancy)
+    return render(request, 'positions/vacancy_form.html', {'form': form, 'vacancy': vacancy})
+
+@login_required
+def vacancy_delete(request, pk):
+    vacancy = get_object_or_404(Vacancy, pk=pk)
+    if request.method == 'POST':
+        vacancy.delete()
+        messages.success(request, 'Вакансия удалена.')
+        return redirect('positions:vacancies_list')
+    return render(request, 'positions/vacancy_confirm_delete.html', {'vacancy': vacancy})
+
+@login_required
+def profile_detail(request, vacancy_id):
+    vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
+    profile = getattr(vacancy, 'profile', None)
+    grades = Grade.objects.all()
+    positions = Position.objects.all()
+    profile_grades = []
+    if profile:
+        profile_grades = list(profile.grade_profiles.select_related('grade').order_by('grade__order'))
+        for pg in profile_grades:
+            hard_skills = pg.hard_skills.split('\n') if pg.hard_skills else []
+            hard_levels = pg.hard_level.split('\n') if pg.hard_level else []
+            pg.hard_skills_table = list(zip(hard_skills, hard_levels))
+            soft_skills = pg.soft_meta_skills.split('\n') if pg.soft_meta_skills else []
+            soft_levels = pg.hard_requirements.split('\n') if pg.hard_requirements else []
+            pg.soft_meta_skills_table = list(zip(soft_skills, soft_levels))
+    return render(request, 'positions/profile_detail.html', {
+        'vacancy': vacancy,
+        'profile': profile,
+        'grades': grades,
+        'positions': positions,
+        'profile_grades': profile_grades,
+    })
+
+@login_required
+def profile_edit(request, vacancy_id):
+    vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
+    profile, created = PositionProfile.objects.get_or_create(vacancy=vacancy)
+    if request.method == 'POST':
+        form = PositionProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Профиль должности сохранён.')
+            return redirect('positions:profile_detail', vacancy_id=vacancy.pk)
+    else:
+        form = PositionProfileForm(instance=profile)
+    return render(request, 'positions/profile_form.html', {'form': form, 'vacancy': vacancy, 'profile': profile})
+
+def ensure_profile_grades():
+    from .models import PositionProfile, Grade, PositionProfileGrade
+    for profile in PositionProfile.objects.all():
+        vacancy = profile.vacancy
+        for grade in Grade.objects.all():
+            if not PositionProfileGrade.objects.filter(profile=profile, vacancy=vacancy, grade=grade).exists():
+                PositionProfileGrade.objects.create(profile=profile, vacancy=vacancy, grade=grade)
+
+@login_required
+def profiles_list(request):
+    ensure_profile_grades()
+    grade_id = request.GET.get('grade')
+    position_id = request.GET.get('position')
+    profile_grades = PositionProfileGrade.objects.select_related('profile', 'grade', 'vacancy', 'vacancy__position')
+    if grade_id:
+        profile_grades = profile_grades.filter(grade_id=grade_id)
+    if position_id:
+        profile_grades = profile_grades.filter(vacancy__position_id=position_id)
+    grades = Grade.objects.all()
+    positions = Position.objects.all()
+    return render(request, 'positions/profiles_list.html', {
+        'profile_grades': profile_grades,
+        'grades': grades,
+        'positions': positions,
+        'selected_grade': grade_id,
+        'selected_position': position_id,
+    })
+
+@csrf_exempt
+@require_POST
+def update_profile_grade_field(request):
+    import json
+    from .models import PositionProfileGrade
+    data = json.loads(request.body)
+    obj_id = data.get('id')
+    field = data.get('field')
+    value = data.get('value')
+    try:
+        obj = PositionProfileGrade.objects.get(id=obj_id)
+        # --- Работа с hard/soft skills как списками ---
+        if field.startswith('hard_skill_') or field.startswith('hard_level_'):
+            # Индекс или 'new'
+            idx = field.split('_')[-1]
+            skills = obj.hard_skills.split('\n') if obj.hard_skills else []
+            levels = obj.hard_level.split('\n') if obj.hard_level else []
+            if field.startswith('hard_skill_'):
+                if idx == 'new':
+                    skills.append(value)
+                    levels.append('')
+                else:
+                    idx = int(idx)
+                    while len(skills) <= idx:
+                        skills.append('')
+                    skills[idx] = value
+                obj.hard_skills = '\n'.join(skills)
+                obj.hard_level = '\n'.join(levels)
+                obj.save()
+                return JsonResponse({'success': True, 'value': value})
+            elif field.startswith('hard_level_'):
+                if idx == 'new':
+                    levels.append(value)
+                    skills.append('')
+                else:
+                    idx = int(idx)
+                    while len(levels) <= idx:
+                        levels.append('')
+                    levels[idx] = value
+                obj.hard_skills = '\n'.join(skills)
+                obj.hard_level = '\n'.join(levels)
+                obj.save()
+                return JsonResponse({'success': True, 'value': value})
+        elif field == 'hard_remove_row':
+            idx = int(value)
+            skills = obj.hard_skills.split('\n') if obj.hard_skills else []
+            levels = obj.hard_level.split('\n') if obj.hard_level else []
+            if idx < len(skills):
+                skills.pop(idx)
+            if idx < len(levels):
+                levels.pop(idx)
+            obj.hard_skills = '\n'.join(skills)
+            obj.hard_level = '\n'.join(levels)
+            obj.save()
+            return JsonResponse({'success': True})
+        elif field.startswith('soft_skill_') or field.startswith('soft_level_'):
+            idx = field.split('_')[-1]
+            skills = obj.soft_meta_skills.split('\n') if obj.soft_meta_skills else []
+            levels = obj.hard_requirements.split('\n') if obj.hard_requirements else []
+            if field.startswith('soft_skill_'):
+                if idx == 'new':
+                    skills.append(value)
+                    levels.append('')
+                else:
+                    idx = int(idx)
+                    while len(skills) <= idx:
+                        skills.append('')
+                    skills[idx] = value
+                obj.soft_meta_skills = '\n'.join(skills)
+                obj.hard_requirements = '\n'.join(levels)
+                obj.save()
+                return JsonResponse({'success': True, 'value': value})
+            elif field.startswith('soft_level_'):
+                if idx == 'new':
+                    levels.append(value)
+                    skills.append('')
+                else:
+                    idx = int(idx)
+                    while len(levels) <= idx:
+                        levels.append('')
+                    levels[idx] = value
+                obj.soft_meta_skills = '\n'.join(skills)
+                obj.hard_requirements = '\n'.join(levels)
+                obj.save()
+                return JsonResponse({'success': True, 'value': value})
+        elif field == 'soft_remove_row':
+            idx = int(value)
+            skills = obj.soft_meta_skills.split('\n') if obj.soft_meta_skills else []
+            levels = obj.hard_requirements.split('\n') if obj.hard_requirements else []
+            if idx < len(skills):
+                skills.pop(idx)
+            if idx < len(levels):
+                levels.pop(idx)
+            obj.soft_meta_skills = '\n'.join(skills)
+            obj.hard_requirements = '\n'.join(levels)
+            obj.save()
+            return JsonResponse({'success': True})
+        # --- Сохранение зарплаты и руководителя ---
+        elif field in ['salary_min', 'salary_max']:
+            if value == '' or value is None:
+                setattr(obj, field, None)
+            else:
+                setattr(obj, field, value)
+            obj.save()
+            return JsonResponse({'success': True, 'value': getattr(obj, field)})
+        elif field == 'supervisor':
+            obj.supervisor = value
+            obj.save()
+            return JsonResponse({'success': True, 'value': obj.supervisor})
+        # --- Остальные поля ---
+        elif hasattr(obj, field):
+            setattr(obj, field, value)
+            obj.save()
+            return JsonResponse({'success': True, 'value': getattr(obj, field)})
+        else:
+            return JsonResponse({'success': False, 'error': 'Нет такого поля'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+@require_POST
+def update_vacancy_grade_field(request):
+    import json
+    from .models import VacancyGrade
+    data = json.loads(request.body)
+    obj_id = data.get('id')
+    field = data.get('field')
+    value = data.get('value')
+    try:
+        obj = VacancyGrade.objects.get(id=obj_id)
+        if hasattr(obj, field):
+            setattr(obj, field, value)
+            obj.save()
+            return JsonResponse({'success': True, 'value': getattr(obj, field)})
+        else:
+            return JsonResponse({'success': False, 'error': 'Нет такого поля'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+@require_POST
+def update_vacancy_field(request):
+    import json
+    from .models import Vacancy
+    data = json.loads(request.body)
+    obj_id = data.get('id')
+    field = data.get('field')
+    value = data.get('value')
+    try:
+        obj = Vacancy.objects.get(id=obj_id)
+        if hasattr(obj, field):
+            setattr(obj, field, value)
+            obj.save()
+            return JsonResponse({'success': True, 'value': getattr(obj, field)})
+        else:
+            return JsonResponse({'success': False, 'error': 'Нет такого поля'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

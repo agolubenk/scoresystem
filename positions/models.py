@@ -29,7 +29,7 @@ class Position(models.Model):
         return self.name
     
     def save(self, *args, **kwargs):
-        """Переопределяем метод save для автоматического создания матрицы"""
+        """Переопределяем метод save для автоматического создания матрицы, вакансии и профиля"""
         is_new = self.pk is None
         super().save(*args, **kwargs)
         
@@ -39,6 +39,19 @@ class Position(models.Model):
                 position=self,
                 name=self.name,
                 description=f'Матрица пересчета баллов для специализации {self.name}'
+            )
+            
+            # Создаем вакансию
+            vacancy = Vacancy.objects.create(
+                name=f'Вакансия {self.name}',
+                position=self,
+                description=f'Описание вакансии для специализации {self.name}'
+            )
+            
+            # Создаем профиль должности
+            PositionProfile.objects.create(
+                vacancy=vacancy,
+                profile_text=f'Профиль должности для специализации {self.name}'
             )
     
     class Meta:
@@ -398,3 +411,78 @@ class CandidateComment(models.Model):
 
     def __str__(self):
         return f"Комментарий от {self.author} ({self.created_at})"
+
+class Vacancy(models.Model):
+    name = models.CharField(max_length=255, verbose_name='Название вакансии')
+    position = models.ForeignKey('Position', on_delete=models.CASCADE, verbose_name='Специализация')
+    description = models.TextField(verbose_name='Описание вакансии', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Вакансия'
+        verbose_name_plural = 'Вакансии'
+        ordering = ['-created_at']
+
+class VacancyGrade(models.Model):
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE, related_name='grades', verbose_name='Вакансия')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, verbose_name='Грейд')
+    salary_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Мин. ЗП')
+    salary_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Макс. ЗП')
+    requirements = models.TextField(verbose_name='Требования', blank=True)
+    responsibilities = models.TextField(verbose_name='Обязанности', blank=True)
+    wishes = models.TextField('Пожелания к кандидату', blank=True)
+    work_conditions = models.TextField('Условия труда', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.vacancy.name} - {self.grade.name}"
+
+    class Meta:
+        verbose_name = 'Грейд вакансии'
+        verbose_name_plural = 'Грейды вакансий'
+        unique_together = ['vacancy', 'grade']
+        ordering = ['grade__order']
+
+class PositionProfile(models.Model):
+    vacancy = models.OneToOneField(Vacancy, on_delete=models.CASCADE, related_name='profile', verbose_name='Вакансия')
+    profile_text = models.TextField(verbose_name='Профиль должности')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'Профиль для {self.vacancy.name}'
+
+    class Meta:
+        verbose_name = 'Профиль должности'
+        verbose_name_plural = 'Профили должностей'
+        ordering = ['-created_at']
+
+class PositionProfileGrade(models.Model):
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE, related_name='profile_grades', verbose_name='Вакансия')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, verbose_name='Грейд')
+    profile = models.ForeignKey(PositionProfile, on_delete=models.CASCADE, related_name='grade_profiles', verbose_name='Профиль должности')
+    general_description = models.TextField('Общее описание', blank=True)
+    hard_skills = models.TextField('Hard skills', blank=True)
+    hard_requirements = models.TextField('Требования к hard skills', blank=True)
+    hard_level = models.TextField('Уровень владения hard skills', blank=True)
+    soft_meta_skills = models.TextField('Soft & meta skills', blank=True)
+    notes = models.TextField('Пояснения', blank=True)
+    salary_min = models.DecimalField('Зарплата (от)', max_digits=10, decimal_places=2, null=True, blank=True)
+    salary_max = models.DecimalField('Зарплата (до)', max_digits=10, decimal_places=2, null=True, blank=True)
+    supervisor = models.CharField('Руководитель', max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.profile} — {self.grade.name}'
+
+    class Meta:
+        verbose_name = 'Профиль по грейду'
+        verbose_name_plural = 'Профили по грейдам'
+        unique_together = ['vacancy', 'grade', 'profile']
+        ordering = ['grade__order']

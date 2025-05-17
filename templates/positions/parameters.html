@@ -4,8 +4,8 @@
 {% block title %}Параметры{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div class="d-flex align-items-center flex-wrap gap-2">
         <h1 class="mb-0 me-3">Параметры</h1>
         <select class="form-select" id="positionSelect" style="width: 300px;">
             <option value="">Все специализации</option>
@@ -14,6 +14,21 @@
             {% endfor %}
         </select>
     </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'positions:export_parameters_excel' %}" class="btn btn-outline-primary">
+            <i class="bi bi-download"></i> Выгрузить в Excel
+        </a>
+        <form id="importExcelForm" enctype="multipart/form-data" class="d-flex align-items-center" style="gap: 0.5rem;">
+            <label class="btn btn-outline-success mb-0" for="importExcelInput">
+                <i class="bi bi-upload"></i> Загрузить из Excel
+                <input type="file" id="importExcelInput" name="file" accept=".xlsx,.xls" style="display:none;">
+            </label>
+            <span id="importStatus" style="font-size:0.95rem;"></span>
+        </form>
+        <button type="button" class="btn btn-generate-ai ms-2" id="generateAIButton">
+            <i class="bi bi-stars"></i> Сгенерировать
+        </button>
+    </div>
 </div>
 
 {% csrf_token %}
@@ -21,70 +36,229 @@
 <style>
     .table-responsive {
         position: relative;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
+        border-radius: 0.75rem;
+        border-top-left-radius: 1.5rem;
+        border: 1.5px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        background: var(--bg-secondary);
     }
     .table-wrapper {
         overflow-x: auto;
-        border-radius: 8px;
+        border-radius: 0.75rem;
+        padding-bottom: 64px;
     }
     .sticky-column {
         position: sticky;
         left: 0;
-        background-color: #fff;
-        z-index: 1;
-        min-width: 300px;
+        background: var(--bg-secondary) !important;
+        z-index: 3;
+        min-width: 320px;
+        max-width: 420px;
+        width: 320px;
+        box-shadow: 2px 0 8px rgba(37,99,235,0.06);
+        vertical-align: top !important;
+    }
+    [data-theme="dark"] .sticky-column {
+        background: #1e293b !important;
+        z-index: 3;
+        box-shadow: 2px 0 12px rgba(0,0,0,0.18);
+    }
+    .table tr > .sticky-column,
+    .table tr > th.sticky-header {
+        background: var(--bg-secondary) !important;
+        z-index: 3;
+    }
+    [data-theme="dark"] .table tr > .sticky-column,
+    [data-theme="dark"] .table tr > th.sticky-header {
+        background: #1e293b !important;
+        z-index: 3;
     }
     .sticky-header {
         position: sticky;
         left: 0;
-        background-color: #212529;
+        background-color: var(--table-header-bg);
         z-index: 2;
     }
     .table-bordered .sticky-column {
-        border-right: 2px solid #dee2e6;
+        border-right: 2px solid var(--border-color);
     }
     .add-row-container {
         position: sticky;
         left: 0;
         bottom: 0;
-        background-color: #fff;
-        border: 1px solid #dee2e6;
+        background-color: var(--bg-secondary);
+        border: 1.5px solid var(--border-color);
         border-top: none;
         z-index: 1;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 0.75rem;
+        border-bottom-right-radius: 0.75rem;
     }
     .add-row-container .btn {
         width: 100%;
-        border-radius: 0 0 8px 8px;
-        padding: 8px;
+        border-radius: 0 0 0.75rem 0.75rem;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background: var(--btn-primary-bg) !important;
+        color: var(--btn-primary-text) !important;
+        border: none;
+        font-weight: 500;
+        font-size: 1.08rem;
+        transition: background 0.2s, color 0.2s;
+    }
+    .add-row-container .btn:hover, .add-row-container .btn:focus {
+        background: var(--btn-primary-hover-bg) !important;
+        color: var(--btn-primary-hover-text) !important;
     }
     .table {
         margin-bottom: 0;
-        border-radius: 8px;
-    }
-    .table thead th:first-child {
-        border-top-left-radius: 8px;
-    }
-    .table thead th:last-child {
-        border-top-right-radius: 8px;
+        border-radius: 0.75rem;
+        background: var(--bg-secondary);
+        color: var(--table-text, var(--dropdown-text));
+        font-size: 0.97rem;
+        table-layout: fixed;
     }
     .table th, .table td {
-        min-width: 350px;
+        min-width: 120px;
+        padding: 0.4rem 0.5rem;
+        color: var(--table-text, var(--dropdown-text));
+        border-color: var(--border-color);
+        vertical-align: middle;
+    }
+    .table thead th:first-child {
+        border-top-left-radius: 1.5rem;
+    }
+    .table thead th:last-child {
+        border-top-right-radius: 0.75rem;
+    }
+    .table tbody tr:nth-child(even) {
+        background: rgba(37,99,235,0.03);
+    }
+    [data-theme="dark"] .table tbody tr:nth-child(even) {
+        background: rgba(129,140,248,0.06);
+    }
+    .table tbody tr:hover {
+        background: var(--dropdown-hover-bg);
+        transition: background 0.2s;
     }
     .editable-cell {
         cursor: pointer;
-        padding: 5px;
+        padding: 3px 6px;
         border-radius: 4px;
-        min-height: 50px;
+        min-height: 36px;
+        transition: background 0.2s, color 0.2s;
+        font-size: 0.97rem;
     }
     .editable-cell:hover {
-        background-color: #f8f9fa;
+        background-color: var(--dropdown-hover-bg);
+        color: var(--dropdown-hover-text);
     }
     .editable-cell:focus {
-        background-color: #fff;
-        outline: 2px solid #0d6efd;
+        background-color: var(--input-bg);
+        color: var(--dropdown-text);
+        outline: 2px solid var(--btn-primary-bg);
+    }
+    [data-theme="dark"] .editable-cell:hover {
+        background-color: #232946 !important;
+        color: #f1f5f9 !important;
+    }
+    [data-theme="dark"] .editable-cell:focus {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+    }
+    .delete-parameter, .delete-row {
+        background: none !important;
+        border: none !important;
+        color: #dc3545 !important;
+        padding: 0.25rem 0.5rem;
+        min-width: 0;
+        box-shadow: none;
+        transition: background 0.2s, color 0.2s, border 0.2s;
+        font-size: 1.1rem;
+        display: inline-flex;
+        align-items: center;
+    }
+    .delete-parameter .confirm-text, .delete-row .confirm-text {
+        display: none;
+    }
+    .delete-parameter .bi, .delete-row .bi {
+        color: #dc3545 !important;
+        transition: color 0.2s;
+    }
+    .delete-parameter.confirm, .delete-row.confirm {
+        background: #dc3545 !important;
+        border: 1.5px solid #dc3545 !important;
+        color: #fff !important;
+        border-radius: 0.5rem;
+    }
+    .delete-parameter.confirm .bi, .delete-row.confirm .bi {
+        color: #fff !important;
+    }
+    .delete-parameter.confirm .confirm-text, .delete-row.confirm .confirm-text {
+        display: inline;
+        margin-left: 0.5rem;
+        font-weight: 500;
+        font-size: 1rem;
+    }
+    /* Иконка мусорки всегда красная во всех состояниях */
+    .delete-parameter .bi.bi-trash,
+    .delete-row .bi.bi-trash,
+    .delete-parameter.confirm .bi.bi-trash,
+    .delete-row.confirm .bi.bi-trash,
+    .delete-parameter:focus .bi.bi-trash,
+    .delete-row:focus .bi.bi-trash,
+    .delete-parameter:hover .bi.bi-trash,
+    .delete-row:hover .bi.bi-trash,
+    tr:hover .delete-parameter .bi.bi-trash,
+    tr:hover .delete-row .bi.bi-trash,
+    tr:focus .delete-parameter .bi.bi-trash,
+    tr:focus .delete-row .bi.bi-trash {
+        color: #dc3545 !important;
+        opacity: 1 !important;
+    }
+    .table td:not(.sticky-column), .table th:not(.sticky-header) {
+        text-align: left;
+        vertical-align: top;
+        padding-left: 1rem;
+        padding-top: 0.5rem;
+    }
+    h1 {
+        color: var(--dropdown-text);
+        font-size: 1.35rem;
+        font-weight: 700;
+    }
+    [data-theme="dark"] h1 {
+        color: #f1f5f9;
+    }
+    .table th, .table th.sticky-header {
+        vertical-align: top;
+    }
+    .grade-column {
+        min-width: 240px !important;
+        width: 240px !important;
+        max-width: 240px !important;
+    }
+    .btn-generate-ai {
+        background: var(--btn-generate-bg, linear-gradient(90deg, #6366f1 0%, #60a5fa 100%));
+        color: var(--btn-generate-text, #fff);
+        border: none;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(99,102,241,0.08);
+        transition: background 0.2s, color 0.2s;
+    }
+    .btn-generate-ai:hover, .btn-generate-ai:focus {
+        background: var(--btn-generate-hover-bg, linear-gradient(90deg, #4338ca 0%, #2563eb 100%));
+        color: var(--btn-generate-hover-text, #fff);
+    }
+    [data-theme="dark"] .btn-generate-ai {
+        background: var(--btn-generate-bg-dark, linear-gradient(90deg, #818cf8 0%, #38bdf8 100%));
+        color: var(--btn-generate-text-dark, #fff);
+    }
+    [data-theme="dark"] .btn-generate-ai:hover, [data-theme="dark"] .btn-generate-ai:focus {
+        background: var(--btn-generate-hover-bg-dark, linear-gradient(90deg, #6366f1 0%, #0ea5e9 100%));
+        color: var(--btn-generate-hover-text-dark, #fff);
     }
 </style>
 
@@ -95,7 +269,7 @@
                 <tr>
                     <th rowspan="2" class="sticky-header" style="width: 300px;">Параметр</th>
                     {% for grade in grades %}
-                    <th colspan="1" class="text-center">{{ grade.name }}</th>
+                    <th colspan="1" class="text-center grade-column">{{ grade.name }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -112,19 +286,20 @@
                             </span>
                             <button type="button" class="btn btn-danger btn-sm delete-parameter" data-parameter-id="{{ parameter.id }}">
                                 <i class="bi bi-trash"></i>
+                                <span class="confirm-text">Подтвердить</span>
                             </button>
                         </div>
                     </td>
                     {% for grade in grades %}
                         {% for desc in parameters_by_grade|get_item:grade.id %}
                             {% if desc.parameter_id == parameter.id %}
-                                <td class="editable-cell" data-description-id="{{ desc.id }}" data-field="description" contenteditable="true">
+                                <td class="editable-cell grade-column" data-description-id="{{ desc.id }}" data-field="description" contenteditable="true">
                                     {{ desc.description }}
                                 </td>
                             {% endif %}
                         {% endfor %}
                         {% if not parameters_by_grade|get_item:grade.id|filter_parameter:parameter.id %}
-                            <td class="editable-cell" data-parameter-id="{{ parameter.id }}" data-grade-id="{{ grade.id }}" data-field="description" contenteditable="true">
+                            <td class="editable-cell grade-column" data-parameter-id="{{ parameter.id }}" data-grade-id="{{ grade.id }}" data-field="description" contenteditable="true">
                                 -
                             </td>
                         {% endif %}
@@ -160,6 +335,34 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-primary" id="confirmPosition">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для генерации параметров ИИ -->
+<div class="modal fade" id="generateAIModal" tabindex="-1" aria-labelledby="generateAIModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="generateAIModalLabel">Генерация параметров с помощью ИИ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="aiPositionSelect" class="form-label">Выберите специализацию:</label>
+                <select class="form-select" id="aiPositionSelect">
+                    <option value="">Выберите специализацию</option>
+                    {% for position in positions %}
+                    <option value="{{ position.name }}">{{ position.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="aiDescription" class="form-label mt-3">Что учесть при генерации (необязательно):</label>
+                <textarea class="form-control" id="aiDescription" rows="3" placeholder="Например: учесть особенности вакансии, требования к опыту, ключевые навыки..."></textarea>
+                <div id="aiGenerateStatus" class="mt-3" style="min-height:1.5em;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-generate-ai" id="confirmGenerateAI">Сгенерировать</button>
             </div>
         </div>
     </div>
@@ -254,12 +457,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Обработка удаления строки
     table.addEventListener('click', function(e) {
-        if (e.target.closest('.delete-row')) {
-            e.target.closest('tr').remove();
-        } else if (e.target.closest('.delete-parameter')) {
-            const parameterId = e.target.closest('.delete-parameter').dataset.parameterId;
-            if (confirm('Вы уверены, что хотите удалить параметр?')) {
+        const btn = e.target.closest('.delete-parameter, .delete-row');
+        if (btn) {
+            if (!btn.classList.contains('confirm')) {
+                btn.classList.add('confirm');
+                clearTimeout(btn._confirmTimeout);
+                btn._confirmTimeout = setTimeout(() => btn.classList.remove('confirm'), 3000);
+                e.preventDefault();
+                return;
+            }
+            btn.classList.remove('confirm');
+            const row = btn.closest('tr');
+            // Если есть data-parameter-id, удаляем на бэке
+            const parameterId = btn.dataset.parameterId;
+            if (parameterId) {
                 deleteParameter(parameterId);
+            } else {
+                // Просто удаляем строку из DOM (новая, не сохранённая)
+                if (row) row.remove();
             }
         }
     });
@@ -573,6 +788,87 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 alert('Произошла ошибка при удалении параметра: ' + error.message);
             }
+        });
+    }
+
+    // Импорт Excel
+    const importForm = document.getElementById('importExcelForm');
+    const importInput = document.getElementById('importExcelInput');
+    const importStatus = document.getElementById('importStatus');
+    if (importForm && importInput) {
+        importInput.addEventListener('change', function() {
+            if (!importInput.files.length) return;
+            const file = importInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            importStatus.textContent = 'Загрузка...';
+            fetch('{% url "positions:import_parameters_excel" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    importStatus.textContent = 'Успешно загружено!';
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    importStatus.textContent = 'Ошибка: ' + (data.error || 'Не удалось загрузить файл');
+                }
+            })
+            .catch(err => {
+                importStatus.textContent = 'Ошибка при загрузке файла';
+            });
+        });
+    }
+
+    // Генерация параметров через ИИ
+    const generateAIButton = document.getElementById('generateAIButton');
+    const generateAIModal = new bootstrap.Modal(document.getElementById('generateAIModal'));
+    const confirmGenerateAI = document.getElementById('confirmGenerateAI');
+    const aiPositionSelect = document.getElementById('aiPositionSelect');
+    const aiGenerateStatus = document.getElementById('aiGenerateStatus');
+    const aiDescription = document.getElementById('aiDescription');
+
+    if (generateAIButton) {
+        generateAIButton.addEventListener('click', function() {
+            aiGenerateStatus.textContent = '';
+            aiPositionSelect.value = '';
+            if (aiDescription) aiDescription.value = '';
+            generateAIModal.show();
+        });
+    }
+    if (confirmGenerateAI) {
+        confirmGenerateAI.addEventListener('click', function() {
+            const position = aiPositionSelect.value;
+            const description = aiDescription ? aiDescription.value : '';
+            if (!position) {
+                aiGenerateStatus.textContent = 'Пожалуйста, выберите специализацию.';
+                return;
+            }
+            aiGenerateStatus.textContent = 'Генерация...';
+            fetch('/positions/parameters/generate_ai/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+                },
+                body: JSON.stringify({ position: position, description: description })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    aiGenerateStatus.textContent = 'Параметры успешно сгенерированы!';
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    aiGenerateStatus.textContent = 'Ошибка: ' + (data.error || 'Не удалось сгенерировать параметры');
+                }
+            })
+            .catch(() => {
+                aiGenerateStatus.textContent = 'Ошибка при генерации.';
+            });
         });
     }
 });

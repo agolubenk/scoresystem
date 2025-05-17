@@ -85,8 +85,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const orderInput = document.getElementById('id_order');
 
     // Обработка клика по карточке грейда
-    document.querySelectorAll('.grade-card').forEach(card => {
-        card.addEventListener('click', function() {
+    document.querySelectorAll('.grade-draggable').forEach(card => {
+        card.addEventListener('click', function(e) {
+            // Не открывать модалку, если клик по кнопке, input, textarea и т.д.
+            if (e.target.closest('button, input, textarea, a')) return;
             const gradeId = this.dataset.gradeId;
             fetch(`/grades/${gradeId}/`)
                 .then(response => response.json())

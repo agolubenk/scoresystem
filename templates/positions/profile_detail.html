@@ -1,0 +1,277 @@
+{% extends 'positions/base.html' %}
+{% block title %}Профиль должности: {{ vacancy.name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-body">
+            {% if profile %}
+            <h2 class="card-title mb-2">Профиль должности для специализации: {{ vacancy.position.name }}</h2>
+            {% else %}
+                <div class="alert alert-warning">Профиль ещё не создан.</div>
+                <a href="{% url 'positions:profile_edit' vacancy.pk %}" class="btn btn-success"><i class="bi bi-plus-circle"></i> Создать профиль</a>
+            {% endif %}
+        </div>
+    </div>
+    {% if profile_grades %}
+    <div class="card">
+        <div class="card-body">
+            <ul class="nav nav-tabs mb-3" id="gradeTabs" role="tablist">
+                {% for pg in profile_grades %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-{{ pg.grade.id }}" data-bs-toggle="tab" data-bs-target="#grade-{{ pg.grade.id }}" type="button" role="tab" aria-controls="grade-{{ pg.grade.id }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">{{ pg.grade.name }}</button>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="tab-content" id="gradeTabsContent">
+                {% for pg in profile_grades %}
+                <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="grade-{{ pg.grade.id }}" role="tabpanel" aria-labelledby="tab-{{ pg.grade.id }}">
+                    <div class="mb-4">
+                        <table class="table table-bordered table-sm align-middle mb-3">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 250px;">Общее описание</th>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="general_description">{{ pg.general_description|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mb-4">
+                        <h5>Hard skills</h5>
+                        <table class="table table-bordered table-sm align-middle mb-3 hard-skills-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Навык</th>
+                                    <th>Уровень владения</th>
+                                    <th style="width: 40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for skill, level in pg.hard_skills_table %}
+                                <tr>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="hard_skill_{{ forloop.counter0 }}">{{ skill|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="hard_level_{{ forloop.counter0 }}">{{ level|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                    <td class="text-center">
+                                        <button class="btn btn-outline-danger btn-sm remove-row" data-type="hard" data-index="{{ forloop.counter0 }}" title="Удалить строку"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center">—</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button class="btn btn-outline-success btn-sm add-row" data-type="hard" data-id="{{ pg.id }}"><i class="bi bi-plus"></i> Добавить навык</button>
+                    </div>
+                    <div class="mb-4">
+                        <h5>Soft & Meta skills</h5>
+                        <table class="table table-bordered table-sm align-middle mb-3 soft-skills-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Навык</th>
+                                    <th>Уровень владения</th>
+                                    <th style="width: 40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for skill, level in pg.soft_meta_skills_table %}
+                                <tr>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="soft_skill_{{ forloop.counter0 }}">{{ skill|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="soft_level_{{ forloop.counter0 }}">{{ level|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                    <td class="text-center">
+                                        <button class="btn btn-outline-danger btn-sm remove-row" data-type="soft" data-index="{{ forloop.counter0 }}" title="Удалить строку"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center">—</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button class="btn btn-outline-success btn-sm add-row" data-type="soft" data-id="{{ pg.id }}"><i class="bi bi-plus"></i> Добавить навык</button>
+                    </div>
+                    <div class="mb-4">
+                        <table class="table table-bordered table-sm align-middle mb-3">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 250px;">Пояснения</th>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="notes">{{ pg.notes|linebreaks|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mb-4">
+                        <table class="table table-bordered table-sm align-middle mb-3">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 250px;">Зарплата (от)</th>
+                                    <td style="width: 200px;"><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="salary_min">{{ pg.salary_min|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                    <th style="width: 150px;">Зарплата (до)</th>
+                                    <td style="width: 200px;"><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="salary_max">{{ pg.salary_max|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mb-4">
+                        <table class="table table-bordered table-sm align-middle mb-3">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 250px;">Руководитель</th>
+                                    <td><div class="editable-field" data-type="profile_grade" data-id="{{ pg.id }}" data-field="supervisor">{{ pg.supervisor|default:'—' }} <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Активация вкладки по параметру grade в URL
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const gradeId = params.get('grade');
+    if (gradeId) {
+        const tabBtn = document.getElementById('tab-' + gradeId);
+        if (tabBtn) {
+            var tab = new bootstrap.Tab(tabBtn);
+            tab.show();
+        }
+    }
+});
+
+document.querySelectorAll('.editable-field').forEach(function(el) {
+    el.addEventListener('click', function() {
+        if (el.querySelector('textarea')) return;
+        const val = el.innerText.replace(/\s*\u270E.*/, '').trim();
+        const textarea = document.createElement('textarea');
+        textarea.value = val === '—' ? '' : val;
+        textarea.className = 'form-control';
+        textarea.rows = 2;
+        el.innerHTML = '';
+        el.appendChild(textarea);
+        textarea.focus();
+        textarea.addEventListener('blur', function() {
+            fetch('/profiles/update_field/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                body: JSON.stringify({
+                    type: el.dataset.type,
+                    id: el.dataset.id,
+                    field: el.dataset.field,
+                    value: textarea.value
+                })
+            }).then(r => r.json()).then(data => {
+                el.innerHTML = (data.value || '—').replace(/\n/g, '<br>') + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+            });
+        });
+    });
+});
+
+// Добавляю обновление параметра grade в URL при переключении вкладки
+document.querySelectorAll('#gradeTabs button[data-bs-toggle="tab"]').forEach(function(tabBtn) {
+    tabBtn.addEventListener('shown.bs.tab', function(e) {
+        const tabId = e.target.id.replace('tab-', '');
+        const url = new URL(window.location);
+        url.searchParams.set('grade', tabId);
+        window.history.replaceState({}, '', url);
+    });
+});
+
+// Добавление строки в hard/soft skills
+document.querySelectorAll('.add-row').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const type = btn.dataset.type; // 'hard' или 'soft'
+        const pgId = btn.dataset.id;
+        const table = btn.closest('.mb-4').querySelector('table tbody');
+        // Создаём новую строку
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><div class="editable-field" data-type="profile_grade" data-id="${pgId}" data-field="${type}_skill_new">— <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+            <td><div class="editable-field" data-type="profile_grade" data-id="${pgId}" data-field="${type}_level_new">— <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i></div></td>
+            <td class="text-center"><button class="btn btn-outline-danger btn-sm remove-row" data-type="${type}" data-index="new" title="Удалить строку"><i class="bi bi-trash"></i></button></td>
+        `;
+        table.appendChild(row);
+        // Назначаем обработчики для новых editable-field и кнопки удаления
+        row.querySelectorAll('.editable-field').forEach(function(el) {
+            el.addEventListener('click', function() {
+                if (el.querySelector('textarea')) return;
+                const val = el.innerText.replace(/\s*\u270E.*/, '').trim();
+                const textarea = document.createElement('textarea');
+                textarea.value = val === '—' ? '' : val;
+                textarea.className = 'form-control';
+                textarea.rows = 2;
+                el.innerHTML = '';
+                el.appendChild(textarea);
+                textarea.focus();
+                textarea.addEventListener('blur', function() {
+                    fetch('/profiles/update_field/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                        body: JSON.stringify({
+                            type: el.dataset.type,
+                            id: el.dataset.id,
+                            field: el.dataset.field,
+                            value: textarea.value
+                        })
+                    }).then(r => r.json()).then(data => {
+                        el.innerHTML = (data.value || '—').replace(/\n/g, '<br>') + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                    });
+                });
+            });
+        });
+        row.querySelector('.remove-row').addEventListener('click', function() {
+            // Для новых строк просто удаляем на фронте
+            row.remove();
+        });
+    });
+});
+
+// Удаление строки для существующих (с индексом)
+document.querySelectorAll('.remove-row').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const type = btn.dataset.type;
+        const index = btn.dataset.index;
+        const row = btn.closest('tr');
+        // Если строка новая (index == 'new'), просто удаляем
+        if (index === 'new') {
+            row.remove();
+            return;
+        }
+        // Для существующих — отправляем на сервер
+        const pgId = row.querySelector('.editable-field').dataset.id;
+        fetch('/profiles/update_field/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+            body: JSON.stringify({
+                type: 'profile_grade',
+                id: pgId,
+                field: type + '_remove_row',
+                value: index
+            })
+        }).then(r => r.json()).then(data => {
+            if (data.success) row.remove();
+        });
+    });
+});
+</script>
+{% endblock %} 
