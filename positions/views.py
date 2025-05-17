@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import CreateView, ListView, UpdateView, DetailView, DeleteView
 from django.http import JsonResponse, HttpResponse, FileResponse
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_http_methods, require_POST, require_GET
 from django.utils.decorators import method_decorator
 import json
 from django.core.serializers import serialize
@@ -26,6 +26,7 @@ import phonenumbers
 from django.forms.models import model_to_dict
 from django.core.files.storage import default_storage
 from django.contrib import messages
+import requests
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -1662,12 +1663,28 @@ def profile_detail(request, vacancy_id):
             soft_skills = pg.soft_meta_skills.split('\n') if pg.soft_meta_skills else []
             soft_levels = pg.hard_requirements.split('\n') if pg.hard_requirements else []
             pg.soft_meta_skills_table = list(zip(soft_skills, soft_levels))
+    # Новый флаг для шаблона: есть ли незаполнённые грейды (учитываем пустые/отсутствующие поля)
+    def is_profile_grade_filled(pg):
+        def has_nonempty_skill(skills_str):
+            if not skills_str:
+                return False
+            return any(s.strip() for s in skills_str.split('\n'))
+        filled = bool(
+            pg.general_description and pg.general_description.strip() and
+            has_nonempty_skill(pg.hard_skills) and
+            has_nonempty_skill(pg.soft_meta_skills) and
+            pg.notes and pg.notes.strip()
+        )
+        print(f"grade={getattr(pg, 'grade', None)}, general_description={repr(pg.general_description)}, hard_skills={repr(pg.hard_skills)}, soft_meta_skills={repr(pg.soft_meta_skills)}, notes={repr(pg.notes)}, filled={filled}")
+        return filled
+    need_ai_generate = any(not is_profile_grade_filled(pg) for pg in profile_grades)
     return render(request, 'positions/profile_detail.html', {
         'vacancy': vacancy,
         'profile': profile,
         'grades': grades,
         'positions': positions,
         'profile_grades': profile_grades,
+        'need_ai_generate': need_ai_generate,
     })
 
 @login_required
@@ -1722,6 +1739,11 @@ def update_profile_grade_field(request):
     field = data.get('field')
     value = data.get('value')
     try:
+        # --- Массовое обновление supervisor ---
+        if field == 'supervisor' and isinstance(obj_id, list):
+            PositionProfileGrade.objects.filter(id__in=obj_id).update(supervisor=value)
+            return JsonResponse({'success': True, 'value': value})
+        # --- Обычное поведение ---
         obj = PositionProfileGrade.objects.get(id=obj_id)
         # --- Работа с hard/soft skills как списками ---
         if field.startswith('hard_skill_') or field.startswith('hard_level_'):
@@ -1870,3 +1892,255 @@ def update_vacancy_field(request):
             return JsonResponse({'success': False, 'error': 'Нет такого поля'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@require_GET
+@login_required
+def download_profile_grades_excel(request, vacancy_id):
+    from .models import Vacancy, PositionProfileGrade
+    vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
+    profile = getattr(vacancy, 'profile', None)
+    if not profile:
+        return JsonResponse({'success': False, 'error': 'Профиль не найден'}, status=404)
+    profile_grades = profile.grade_profiles.select_related('grade').order_by('grade__order')
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    # Стили
+    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D9D9D9', 'border': 1, 'align': 'center'})
+    table_header_fmt = workbook.add_format({'bold': True, 'bg_color': '#B7DEE8', 'border': 1, 'align': 'center'})
+    cell_fmt = workbook.add_format({'border': 1, 'align': 'left'})
+    for pg in profile_grades:
+        sheet_name = pg.grade.name[:31]
+        ws = workbook.add_worksheet(sheet_name)
+        row = 0
+        # Общее описание (объединённая)
+        ws.merge_range(row, 0, row, 2, 'Общее описание', header_fmt)
+        row += 1
+        ws.merge_range(row, 0, row, 2, pg.general_description or '', cell_fmt)
+        row += 2
+        # Hard skills (объединённая)
+        ws.merge_range(row, 0, row, 2, 'Hard skills', header_fmt)
+        row += 1
+        ws.write(row, 0, 'Навык', table_header_fmt)
+        ws.write(row, 1, 'Уровень владения', table_header_fmt)
+        hard_skills = pg.hard_skills.split('\n') if pg.hard_skills else []
+        hard_levels = pg.hard_level.split('\n') if pg.hard_level else []
+        max_hard = max(len(hard_skills), len(hard_levels))
+        for i in range(max_hard):
+            ws.write(row + 1 + i, 0, hard_skills[i] if i < len(hard_skills) else '', cell_fmt)
+            ws.write(row + 1 + i, 1, hard_levels[i] if i < len(hard_levels) else '', cell_fmt)
+        row += 1 + max_hard + 1
+        # Soft & Meta skills (объединённая)
+        ws.merge_range(row, 0, row, 2, 'Soft & Meta skills', header_fmt)
+        row += 1
+        ws.write(row, 0, 'Навык', table_header_fmt)
+        ws.write(row, 1, 'Уровень владения', table_header_fmt)
+        soft_skills = pg.soft_meta_skills.split('\n') if pg.soft_meta_skills else []
+        soft_levels = pg.hard_requirements.split('\n') if pg.hard_requirements else []
+        max_soft = max(len(soft_skills), len(soft_levels))
+        for i in range(max_soft):
+            ws.write(row + 1 + i, 0, soft_skills[i] if i < len(soft_skills) else '', cell_fmt)
+            ws.write(row + 1 + i, 1, soft_levels[i] if i < len(soft_levels) else '', cell_fmt)
+        row += 1 + max_soft + 1
+        # Пояснения (объединённая)
+        ws.merge_range(row, 0, row, 2, 'Пояснения', header_fmt)
+        row += 1
+        ws.merge_range(row, 0, row, 2, pg.notes or '', cell_fmt)
+        row += 2
+        # Зарплата (объединённая)
+        ws.merge_range(row, 0, row, 2, 'Зарплата', header_fmt)
+        row += 1
+        ws.write(row, 0, 'от', table_header_fmt)
+        ws.write(row, 1, str(pg.salary_min) if hasattr(pg, 'salary_min') and pg.salary_min is not None else '', cell_fmt)
+        ws.write(row, 2, 'до', table_header_fmt)
+        ws.write(row, 3, str(pg.salary_max) if hasattr(pg, 'salary_max') and pg.salary_max is not None else '', cell_fmt)
+        row += 2
+        # Руководитель (объединённая)
+        ws.merge_range(row, 0, row, 2, 'Руководитель', header_fmt)
+        row += 1
+        ws.merge_range(row, 0, row, 2, pg.supervisor if hasattr(pg, 'supervisor') else '', cell_fmt)
+    workbook.close()
+    output.seek(0)
+    filename = f'profile_grades_{vacancy_id}.xlsx'
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
+
+@csrf_exempt
+@login_required
+@require_POST
+def generate_profile_grades_ai(request, vacancy_id):
+    """
+    Генерирует профили должности для всех грейдов с помощью Gemini API, последовательно,
+    если есть незаполненные поля (general_description, hard/soft skills, notes).
+    """
+    from .models import Vacancy, PositionProfileGrade, Grade, Parameter, ParameterDescription
+    vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
+    profile = getattr(vacancy, 'profile', None)
+    if not profile:
+        return JsonResponse({'success': False, 'error': 'Профиль не найден'})
+    profile_grades = list(profile.grade_profiles.select_related('grade').order_by('grade__order'))
+    if not profile_grades:
+        return JsonResponse({'success': False, 'error': 'Нет грейдов для профиля'})
+    # Проверяем, есть ли незаполненные поля
+    need_generate = False
+    for pg in profile_grades:
+        if not (pg.general_description and pg.hard_skills and pg.soft_meta_skills and pg.notes):
+            need_generate = True
+            break
+    if not need_generate:
+        return JsonResponse({'success': False, 'error': 'Все профили уже заполнены'})
+    # Собираем параметры по грейдам
+    grades = Grade.objects.all().order_by('order')
+    parameters_by_grade = {}
+    for grade in grades:
+        params = ParameterDescription.objects.filter(grade=grade, parameter__position=vacancy.position)
+        parameters_by_grade[grade.id] = [p.description for p in params if p.description]
+    # Последовательная генерация
+    prev_profile = None
+    for idx, pg in enumerate(profile_grades):
+        # Если все поля заполнены — пропускаем
+        if pg.general_description and pg.hard_skills and pg.soft_meta_skills and pg.notes:
+            prev_profile = pg  # для цепочки
+            continue
+        grade = pg.grade
+        params = parameters_by_grade.get(grade.id, [])
+        # Формируем промпт
+        prompt = f"""
+        Сгенерируй профиль должности для грейда "{grade.name}" по специализации "{vacancy.position.name}".
+        Параметры для этого грейда:
+        {chr(10).join(params) if params else 'Нет параметров'}
+        """
+        if prev_profile:
+            prompt += f"\nУчитывай, что для предыдущего грейда профиль был такой:\nОписание: {prev_profile.general_description}\nHard skills: {prev_profile.hard_skills}\nSoft/meta skills: {prev_profile.soft_meta_skills}\nПояснения: {prev_profile.notes}"
+        prompt += "\nОтвет верни в формате JSON с ключами: general_description, hard_skills (список), soft_meta_skills (список), notes."
+        # Запрос к Gemini
+        api_key = GEMINI_API_KEY
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + api_key
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        try:
+            resp = requests.post(url, headers=headers, json=data, timeout=60)
+            try:
+                resp.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                print('Gemini API error:', resp.status_code, resp.text)
+                return JsonResponse({'success': False, 'error': f'Gemini API error: {str(e)}', 'response': resp.text})
+            result = resp.json()
+            print('Gemini raw response:', repr(result))
+            if not result.get('candidates'):
+                return JsonResponse({'success': False, 'error': f'Gemini не вернул кандидатов: {result}'})
+            text = result['candidates'][0]['content']['parts'][0].get('text', '')
+            if not text.strip():
+                return JsonResponse({'success': False, 'error': f'Gemini вернул пустой текст: {repr(text)}'})
+            # Удаляем markdown-обёртку, если есть
+            text = text.strip()
+            if text.startswith('```json'):
+                text = text[len('```json'):].strip()
+            if text.startswith('```'):
+                text = text[len('```'):].strip()
+            if text.endswith('```'):
+                text = text[:-3].strip()
+            import json as pyjson
+            parsed = pyjson.loads(text)
+            pg.general_description = parsed.get('general_description', '')
+            pg.hard_skills = '\n'.join(parsed.get('hard_skills', []))
+            pg.soft_meta_skills = '\n'.join(parsed.get('soft_meta_skills', []))
+            pg.notes = parsed.get('notes', '')
+            pg.save()
+            prev_profile = pg
+        except Exception as e:
+            print('Ошибка генерации Gemini:', str(e))
+            return JsonResponse({'success': False, 'error': f'Ошибка генерации для грейда {grade.name}: {str(e)}'})
+    return JsonResponse({'success': True})
+
+@csrf_exempt
+@login_required
+@require_POST
+def rerun_ai_profile_generation(request, vacancy_id):
+    """
+    Генерирует профили должности для всех грейдов с помощью Gemini API, сохраняет в базе и возвращает JSON с данными по каждому грейду.
+    """
+    from .models import Vacancy, PositionProfileGrade, Grade, Parameter, ParameterDescription
+    vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
+    profile = getattr(vacancy, 'profile', None)
+    if not profile:
+        return JsonResponse({'success': False, 'error': 'Профиль не найден'})
+    profile_grades = list(profile.grade_profiles.select_related('grade').order_by('grade__order'))
+    if not profile_grades:
+        return JsonResponse({'success': False, 'error': 'Нет грейдов для профиля'})
+    # Собираем параметры по грейдам
+    grades = Grade.objects.all().order_by('order')
+    parameters_by_grade = {}
+    for grade in grades:
+        params = ParameterDescription.objects.filter(grade=grade, parameter__position=vacancy.position)
+        parameters_by_grade[grade.id] = [p.description for p in params if p.description]
+    # Последовательная генерация
+    prev_profile = None
+    result_data = []
+    for idx, pg in enumerate(profile_grades):
+        grade = pg.grade
+        params = parameters_by_grade.get(grade.id, [])
+        # Формируем промпт
+        prompt = f"""
+        Сгенерируй профиль должности для грейда "{grade.name}" по специализации "{vacancy.position.name}".
+        Параметры для этого грейда:
+        {chr(10).join(params) if params else 'Нет параметров'}
+        """
+        if prev_profile:
+            prompt += f"\nУчитывай, что для предыдущего грейда профиль был такой:\nОписание: {prev_profile.general_description}\nHard skills: {prev_profile.hard_skills}\nSoft/meta skills: {prev_profile.soft_meta_skills}\nПояснения: {prev_profile.notes}"
+        prompt += "\nОбязательно сгенерируй не менее 5 hard skills и не менее 5 soft/meta skills, даже если они частично повторяются. Не оставляй эти поля пустыми. Ответ верни только в формате JSON с ключами: general_description, hard_skills (список), soft_meta_skills (список), notes. Без пояснений, без текста до и после, только JSON."
+        # Запрос к Gemini
+        api_key = GEMINI_API_KEY
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + api_key
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        try:
+            resp = requests.post(url, headers=headers, json=data, timeout=60)
+            try:
+                resp.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                print('Gemini API error:', resp.status_code, resp.text)
+                return JsonResponse({'success': False, 'error': f'Gemini API error: {str(e)}', 'response': resp.text})
+            result = resp.json()
+            print('Gemini raw response:', repr(result))
+            if not result.get('candidates'):
+                return JsonResponse({'success': False, 'error': f'Gemini не вернул кандидатов: {result}'})
+            text = result['candidates'][0]['content']['parts'][0].get('text', '')
+            if not text.strip():
+                return JsonResponse({'success': False, 'error': f'Gemini вернул пустой текст: {repr(text)}'})
+            # Удаляем markdown-обёртку, если есть
+            text = text.strip()
+            if text.startswith('```json'):
+                text = text[len('```json'):].strip()
+            if text.startswith('```'):
+                text = text[len('```'):].strip()
+            if text.endswith('```'):
+                text = text[:-3].strip()
+            import json as pyjson
+            try:
+                parsed = pyjson.loads(text)
+            except Exception as e:
+                print('Gemini ответ не JSON:', repr(text))
+                return JsonResponse({'success': False, 'error': f'Ответ Gemini не JSON: {text[:200]}...'})
+            pg.general_description = parsed.get('general_description', '')
+            pg.hard_skills = '\n'.join(parsed.get('hard_skills', []))
+            pg.soft_meta_skills = '\n'.join(parsed.get('soft_meta_skills', []))
+            pg.notes = parsed.get('notes', '')
+            pg.save()
+            prev_profile = pg
+            result_data.append({
+                'grade_id': grade.id,
+                'grade_name': grade.name,
+                'general_description': pg.general_description,
+                'hard_skills': parsed.get('hard_skills', []),
+                'soft_meta_skills': parsed.get('soft_meta_skills', []),
+                'notes': pg.notes
+            })
+        except Exception as e:
+            print('Ошибка генерации Gemini:', str(e))
+            return JsonResponse({'success': False, 'error': f'Ошибка генерации для грейда {grade.name}: {str(e)}'})
+    return JsonResponse({'success': True, 'grades': result_data})

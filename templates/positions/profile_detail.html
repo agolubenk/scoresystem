@@ -12,16 +12,27 @@
             {% endif %}
         </div>
     </div>
-    {% if profile_grades %}
     <div class="card">
         <div class="card-body">
-            <ul class="nav nav-tabs mb-3" id="gradeTabs" role="tablist">
-                {% for pg in profile_grades %}
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-{{ pg.grade.id }}" data-bs-toggle="tab" data-bs-target="#grade-{{ pg.grade.id }}" type="button" role="tab" aria-controls="grade-{{ pg.grade.id }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">{{ pg.grade.name }}</button>
-                </li>
-                {% endfor %}
-            </ul>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <ul class="nav nav-tabs mb-0" id="gradeTabs" role="tablist">
+                    {% for pg in profile_grades %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if forloop.first %}active{% endif %}" id="tab-{{ pg.grade.id }}" data-bs-toggle="tab" data-bs-target="#grade-{{ pg.grade.id }}" type="button" role="tab" aria-controls="grade-{{ pg.grade.id }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">{{ pg.grade.name }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success btn-sm" id="downloadExcelButton" title="Скачать в Excel">
+                        <i class="bi bi-file-earmark-excel"></i> Excel
+                    </button>
+                    {% if need_ai_generate %}
+                    <button class="btn btn-warning btn-sm" id="generateAIProfileButton" title="Сгенерировать профиль с помощью ИИ">
+                        <i class="bi bi-stars"></i> Сгенерировать с ИИ
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
             <div class="tab-content" id="gradeTabsContent">
                 {% for pg in profile_grades %}
                 <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="grade-{{ pg.grade.id }}" role="tabpanel" aria-labelledby="tab-{{ pg.grade.id }}">
@@ -59,7 +70,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                        <button class="btn btn-outline-success btn-sm add-row" data-type="hard" data-id="{{ pg.id }}"><i class="bi bi-plus"></i> Добавить навык</button>
+                        <button class="btn btn-primary btn-sm add-row" data-type="hard" data-id="{{ pg.id }}"><i class="bi bi-plus"></i> Добавить навык</button>
                     </div>
                     <div class="mb-4">
                         <h5>Soft & Meta skills</h5>
@@ -85,7 +96,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                        <button class="btn btn-outline-success btn-sm add-row" data-type="soft" data-id="{{ pg.id }}"><i class="bi bi-plus"></i> Добавить навык</button>
+                        <button class="btn btn-primary btn-sm add-row" data-type="soft" data-id="{{ pg.id }}"><i class="bi bi-plus"></i> Добавить навык</button>
                     </div>
                     <div class="mb-4">
                         <table class="table table-bordered table-sm align-middle mb-3">
@@ -124,7 +135,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
 </div>
 {% endblock %}
 
@@ -157,6 +167,35 @@ document.addEventListener('DOMContentLoaded', function() {
             tab.show();
         }
     }
+
+    // Скачивание Excel
+    var excelBtn = document.getElementById('downloadExcelButton');
+    if (excelBtn) {
+        excelBtn.addEventListener('click', function() {
+            const vacancyId = "{{ vacancy.id }}";
+            fetch(`/profiles/${vacancyId}/download_excel/`, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Ошибка при скачивании файла');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `profile_grades_${vacancyId}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                alert('Ошибка при скачивании Excel: ' + err.message);
+            });
+        });
+    }
 });
 
 document.querySelectorAll('.editable-field').forEach(function(el) {
@@ -171,18 +210,44 @@ document.querySelectorAll('.editable-field').forEach(function(el) {
         el.appendChild(textarea);
         textarea.focus();
         textarea.addEventListener('blur', function() {
-            fetch('/profiles/update_field/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-                body: JSON.stringify({
-                    type: el.dataset.type,
-                    id: el.dataset.id,
-                    field: el.dataset.field,
-                    value: textarea.value
-                })
-            }).then(r => r.json()).then(data => {
-                el.innerHTML = (data.value || '—').replace(/\n/g, '<br>') + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
-            });
+            // --- Жёсткая синхронизация для supervisor ---
+            if (el.dataset.field === 'supervisor') {
+                // Собираем все id грейдов на странице
+                const allIds = Array.from(document.querySelectorAll('.editable-field[data-field="supervisor"]'))
+                    .map(e => e.dataset.id);
+                fetch('/profiles/update_field/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                    body: JSON.stringify({
+                        type: el.dataset.type,
+                        id: allIds, // массив id
+                        field: el.dataset.field,
+                        value: textarea.value
+                    })
+                }).then(r => r.json()).then(data => {
+                    document.querySelectorAll('.editable-field[data-field="supervisor"]').forEach(function(otherEl) {
+                        if (!data.value || data.value.trim() === '') {
+                            otherEl.innerHTML = '— <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                        } else {
+                            otherEl.innerHTML = (data.value || '—') + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                        }
+                    });
+                });
+            } else {
+                // --- Обычное поведение для остальных полей ---
+                fetch('/profiles/update_field/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                    body: JSON.stringify({
+                        type: el.dataset.type,
+                        id: el.dataset.id,
+                        field: el.dataset.field,
+                        value: textarea.value
+                    })
+                }).then(r => r.json()).then(data => {
+                    el.innerHTML = (data.value || '—').replace(/\n/g, '<br>') + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                });
+            }
         });
     });
 });
@@ -272,6 +337,89 @@ document.querySelectorAll('.remove-row').forEach(function(btn) {
             if (data.success) row.remove();
         });
     });
+});
+
+// Автозаполнение руководителя по всем грейдам, если найден хотя бы один
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Собираем все поля руководителя
+        const supervisorFields = document.querySelectorAll('.editable-field[data-field="supervisor"]');
+        let supervisorValue = null;
+        supervisorFields.forEach(function(el) {
+            const val = el.innerText.replace(/\s*\u270E.*/, '').trim();
+            if (val && val !== '—' && !supervisorValue) {
+                supervisorValue = val;
+            }
+        });
+        if (supervisorValue) {
+            supervisorFields.forEach(function(el) {
+                const val = el.innerText.replace(/\s*\u270E.*/, '').trim();
+                if (!val || val === '—') {
+                    el.innerHTML = supervisorValue + ' <i class="bi bi-pencil small ms-2 text-muted edit-icon"></i>';
+                }
+            });
+        }
+    });
+})();
+
+// Генерация профиля с помощью ИИ Gemini
+document.addEventListener('DOMContentLoaded', function() {
+    var aiBtn = document.getElementById('generateAIProfileButton');
+    if (aiBtn) {
+        aiBtn.addEventListener('click', function() {
+            aiBtn.disabled = true;
+            aiBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Генерация...';
+            fetch(`/profiles/{{ vacancy.id }}/generate_ai/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка генерации: ' + (data.error || 'Неизвестная ошибка'));
+                    aiBtn.disabled = false;
+                    aiBtn.innerHTML = '<i class="bi bi-stars"></i> Сгенерировать с ИИ';
+                }
+            })
+            .catch(err => {
+                alert('Ошибка генерации: ' + err.message);
+                aiBtn.disabled = false;
+                aiBtn.innerHTML = '<i class="bi bi-stars"></i> Сгенерировать с ИИ';
+            });
+        });
+    }
+});
+
+// Перегенерация профиля с помощью ИИ Gemini (обновлённый endpoint)
+document.addEventListener('DOMContentLoaded', function() {
+    var rerunBtn = document.getElementById('rerunAIProfileButton');
+    if (rerunBtn) {
+        rerunBtn.addEventListener('click', function() {
+            rerunBtn.disabled = true;
+            rerunBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Генерация...';
+            fetch(`/profiles/{{ vacancy.id }}/rerun-ai/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка генерации: ' + (data.error || 'Неизвестная ошибка'));
+                    rerunBtn.disabled = false;
+                    rerunBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Перегенерировать профиль с помощью ИИ';
+                }
+            })
+            .catch(err => {
+                alert('Ошибка генерации: ' + err.message);
+                rerunBtn.disabled = false;
+                rerunBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Перегенерировать профиль с помощью ИИ';
+            });
+        });
+    }
 });
 </script>
 {% endblock %} 

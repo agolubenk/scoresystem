@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Grade, Position, PositionGrade, Parameter, ParameterDescription, InterviewQuestion, Candidate, CandidateFile, CandidateTask, CandidateChangeHistory, CandidateComment, Vacancy, PositionProfile
+from .models import Grade, Position, PositionGrade, Parameter, ParameterDescription, InterviewQuestion, Candidate, CandidateFile, CandidateTask, CandidateChangeHistory, CandidateComment, Vacancy, PositionProfile, PositionProfileGrade
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
@@ -89,6 +89,34 @@ class VacancyAdmin(admin.ModelAdmin):
 
 @admin.register(PositionProfile)
 class PositionProfileAdmin(admin.ModelAdmin):
-    list_display = ('vacancy', 'created_at', 'updated_at')
-    search_fields = ('profile_text',)
+    list_display = ('vacancy', 'position', 'created_at', 'updated_at')
+    list_filter = ('vacancy__position',)
+    search_fields = ('profile_text', 'vacancy__name')
+    readonly_fields = ('created_at', 'updated_at')
     ordering = ('-created_at',)
+    
+    def position(self, obj):
+        return obj.vacancy.position
+    position.short_description = 'Специализация'
+
+@admin.register(PositionProfileGrade)
+class PositionProfileGradeAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'grade', 'position', 'salary_range', 'supervisor')
+    list_filter = ('grade', 'profile__vacancy__position')
+    search_fields = ('profile__vacancy__name', 'general_description', 'hard_skills', 'soft_meta_skills', 'supervisor')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('grade__order',)
+    
+    def position(self, obj):
+        return obj.profile.vacancy.position
+    position.short_description = 'Специализация'
+    
+    def salary_range(self, obj):
+        if obj.salary_min and obj.salary_max:
+            return f"{obj.salary_min} - {obj.salary_max}"
+        elif obj.salary_min:
+            return f"от {obj.salary_min}"
+        elif obj.salary_max:
+            return f"до {obj.salary_max}"
+        return "—"
+    salary_range.short_description = 'Зарплата'

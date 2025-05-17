@@ -68,8 +68,11 @@ urlpatterns = [
     path('vacancies/<int:pk>/delete/', views.vacancy_delete, name='vacancy_delete'),
     path('profiles/<int:vacancy_id>/', views.profile_detail, name='profile_detail'),
     path('profiles/<int:vacancy_id>/edit/', views.profile_edit, name='profile_edit'),
+    path('profiles/<int:vacancy_id>/generate_ai/', views.generate_profile_grades_ai, name='generate_profile_grades_ai'),
+    path('profiles/<int:vacancy_id>/rerun-ai/', views.rerun_ai_profile_generation, name='rerun_ai_profile_generation'),
     path('profiles/', views.profiles_list, name='profiles_list'),
     path('profiles/update_field/', views.update_profile_grade_field, name='profile_grade_update_field'),
     path('vacancies/update_field/', views.update_vacancy_grade_field, name='vacancy_grade_update_field'),
     path('vacancy/update_field/', views.update_vacancy_field, name='vacancy_update_field'),
+    path('profiles/<int:vacancy_id>/download_excel/', views.download_profile_grades_excel, name='download_profile_grades_excel'),
 ] 
