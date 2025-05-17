@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'positions/base.html' %}
 
 {% block title %}Новое интервью{% endblock %}
 
@@ -101,6 +101,51 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- Новый код для автозаполнения ФИО кандидата из URL ---
+    function getUrlParam(name) {
+        const url = new URL(window.location.href);
+        return url.searchParams.get(name);
+    }
+    const fullNameFromUrl = getUrlParam('full_name');
+    if (fullNameFromUrl) {
+        const nameInput = document.getElementById('id_candidate_name');
+        if (nameInput) {
+            nameInput.value = fullNameFromUrl;
+        }
+        // Попробуем выбрать кандидата в селекте, если такой есть
+        const candidateSelect = document.getElementById('id_candidate_select');
+        let found = false;
+        if (candidateSelect) {
+            for (let i = 0; i < candidateSelect.options.length; i++) {
+                const opt = candidateSelect.options[i];
+                if (opt.getAttribute('data-full_name') && opt.getAttribute('data-full_name').trim() === fullNameFromUrl.trim()) {
+                    candidateSelect.selectedIndex = i;
+                    candidateSelect.dispatchEvent(new Event('change'));
+                    // Заполняем все связанные поля
+                    document.getElementById('id_candidate_name').value = opt.getAttribute('data-full_name') || '';
+                    document.getElementById('id_email').value = opt.getAttribute('data-email') || '';
+                    document.getElementById('id_phone').value = opt.getAttribute('data-phone') || '';
+                    document.getElementById('id_telegram').value = opt.getAttribute('data-telegram') || '';
+                    document.getElementById('id_desired_position').value = opt.getAttribute('data-desired_position') || '';
+                    // Автоматически подставить специализацию
+                    var desiredPosition = opt.getAttribute('data-desired_position');
+                    if (desiredPosition) {
+                        var positionSelect = document.getElementById('id_position');
+                        if (positionSelect) {
+                            positionSelect.value = desiredPosition;
+                        }
+                    }
+                    found = true;
+                    break;
+                }
+            }
+        }
+        // Если не найден — только ФИО
+        if (!found && nameInput) {
+            nameInput.value = fullNameFromUrl;
+        }
+    }
+    // --- Оригинальный код ---
     const candidateSelect = document.getElementById('id_candidate_select');
     if (candidateSelect) {
         candidateSelect.addEventListener('change', function() {
@@ -110,6 +155,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('id_phone').value = selected.getAttribute('data-phone') || '';
             document.getElementById('id_telegram').value = selected.getAttribute('data-telegram') || '';
             document.getElementById('id_desired_position').value = selected.getAttribute('data-desired_position') || '';
+            // Автоматически подставить специализацию при ручном выборе
+            var desiredPosition = selected.getAttribute('data-desired_position');
+            if (desiredPosition) {
+                var positionSelect = document.getElementById('id_position');
+                if (positionSelect) {
+                    positionSelect.value = desiredPosition;
+                }
+            }
         });
     }
     document.getElementById('add-candidate-btn').addEventListener('click', function() {

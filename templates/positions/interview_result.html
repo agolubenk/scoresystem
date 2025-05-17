@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'positions/base.html' %}
 
 {% block title %}Результаты интервью{% endblock %}
 
@@ -215,7 +215,7 @@
             <div class="d-flex justify-content-between align-items-center mt-3">
                 <div>
                     <a href="{% url 'positions:interview_list' %}" class="btn btn-secondary">Назад к списку</a>
-                    <a href="{% url 'positions:download_interview_results' object.pk %}" class="btn btn-primary ms-2">Скачать результаты</a>
+                    <a href="{% url 'positions:interview_download' object.pk %}" class="btn btn-primary ms-2">Скачать результаты</a>
                     <a href="{% url 'positions:interview_conduct' object.pk %}" class="btn btn-warning ms-2">Редактировать интервью</a>
                 </div>
                 <button id="rerun-ai-btn" class="btn btn-outline-success">Перезапустить анализ ИИ</button>

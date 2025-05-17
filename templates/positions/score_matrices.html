@@ -1,7 +1,93 @@
-{% extends 'base.html' %}
+{% extends 'positions/base.html' %}
 {% load positions_extras %}
 
 {% block title %}Матрицы пересчета баллов{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Стили для карточек матриц */
+    .matrix-card .card {
+        background: var(--bg-secondary);
+        color: var(--dropdown-text);
+    }
+
+    .matrix-card .card-header {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .matrix-card .card-title {
+        color: var(--dropdown-text);
+    }
+
+    .matrix-card .card-text {
+        color: var(--dropdown-text);
+    }
+
+    .matrix-card .text-muted {
+        color: var(--dropdown-text) !important;
+        opacity: 0.8;
+    }
+
+    /* Стили для кнопок и переключателей */
+    .matrix-card .btn-primary {
+        background: var(--btn-primary-bg);
+        color: var(--btn-primary-text);
+        border-color: var(--btn-primary-bg);
+    }
+
+    .matrix-card .btn-primary:hover {
+        background: var(--btn-primary-hover-bg);
+        color: var(--btn-primary-hover-text);
+    }
+
+    .matrix-card .form-check-input {
+        background-color: var(--input-bg);
+        border-color: var(--input-border);
+    }
+
+    .matrix-card .form-check-input:checked {
+        background-color: var(--btn-primary-bg);
+        border-color: var(--btn-primary-bg);
+    }
+
+    /* Стили для иконок */
+    .matrix-card .bi {
+        color: var(--dropdown-text);
+    }
+
+    .matrix-card .btn-primary .bi {
+        color: var(--btn-primary-text);
+    }
+
+    /* Стили для неактивных матриц */
+    .matrix-card[data-is-active="false"] .card {
+        border-color: #dc3545 !important;
+    }
+
+    /* Стили для выпадающего меню */
+    .dropdown-menu {
+        background: var(--dropdown-bg);
+        border-color: var(--border-color);
+    }
+
+    .dropdown-item {
+        color: var(--dropdown-text);
+    }
+
+    .dropdown-item:hover {
+        background: var(--dropdown-hover-bg);
+        color: var(--dropdown-hover-text);
+    }
+
+    /* Стили для алерта */
+    .alert-info {
+        background: var(--bg-secondary);
+        color: var(--dropdown-text);
+        border-color: var(--border-color);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container">

@@ -1,7 +1,313 @@
-{% extends 'base.html' %}
+{% extends 'positions/base.html' %}
 {% load positions_extras %}
 
 {% block title %}Редактирование матрицы пересчета баллов{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Стили для карточки */
+    .card {
+        background: var(--bg-secondary);
+        color: var(--dropdown-text);
+    }
+
+    .card-header {
+        background: var(--bg-primary) !important;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Стили для таблицы */
+    .table {
+        color: var(--dropdown-text);
+        background: var(--bg-secondary);
+    }
+
+    .table thead th {
+        background: var(--table-header-bg) !important;
+        color: var(--dropdown-text);
+        border-color: var(--border-color);
+    }
+
+    .table tbody tr:hover {
+        background: var(--table-row-hover);
+    }
+
+    .table td, .table th {
+        border-color: var(--border-color);
+        color: var(--dropdown-text);
+    }
+
+    /* Стили для инпутов в таблице */
+    .matrix-cell {
+        background: var(--input-bg) !important;
+        border-color: var(--input-border) !important;
+        color: var(--dropdown-text) !important;
+        transition: all 0.2s ease;
+    }
+
+    .matrix-cell:focus {
+        background: var(--input-bg) !important;
+        border-color: var(--btn-primary-bg) !important;
+        box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15) !important;
+        color: var(--dropdown-text) !important;
+    }
+
+    .matrix-cell:hover {
+        border-color: var(--btn-primary-bg) !important;
+    }
+
+    /* Стили для кнопок */
+    .btn-light {
+        background: var(--bg-secondary);
+        color: var(--dropdown-text);
+        border-color: var(--border-color);
+    }
+
+    .btn-light:hover {
+        background: var(--dropdown-hover-bg);
+        color: var(--dropdown-hover-text);
+    }
+
+    .btn-success {
+        background: #22c55e;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #16a34a;
+        color: white;
+    }
+
+    /* Стили для модального окна */
+    .modal-content {
+        background: var(--bg-secondary);
+        color: var(--dropdown-text);
+        border-color: var(--border-color);
+    }
+
+    .modal-header {
+        border-bottom-color: var(--border-color);
+    }
+
+    .modal-footer {
+        border-top-color: var(--border-color);
+    }
+
+    .modal-title {
+        color: var(--dropdown-text);
+    }
+
+    .form-label {
+        color: var(--dropdown-text);
+    }
+
+    .form-control {
+        background: var(--input-bg) !important;
+        border-color: var(--input-border) !important;
+        color: var(--dropdown-text) !important;
+    }
+
+    .form-control:focus {
+        background: var(--input-bg) !important;
+        border-color: var(--btn-primary-bg) !important;
+        box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15) !important;
+        color: var(--dropdown-text) !important;
+    }
+
+    /* Стили для алерта */
+    .alert-info {
+        background: var(--bg-secondary);
+        color: var(--dropdown-text);
+        border-color: var(--border-color);
+    }
+
+    /* Стили для иконок */
+    .bi {
+        color: inherit;
+    }
+
+    .btn-light .bi {
+        color: var(--dropdown-text);
+    }
+
+    .btn-light:hover .bi {
+        color: var(--dropdown-hover-text);
+    }
+
+    /* Стили для текста */
+    .text-muted {
+        color: var(--dropdown-text) !important;
+        opacity: 0.8;
+    }
+
+    /* Стили для суммы */
+    .row-sum, .col-sum {
+        color: var(--dropdown-text);
+        font-weight: 600;
+    }
+
+    /* Стили для заголовков таблицы */
+    .table-light {
+        background: var(--table-header-bg) !important;
+        color: var(--dropdown-text) !important;
+    }
+
+    .table-light td, .table-light th {
+        background: var(--table-header-bg) !important;
+        color: var(--dropdown-text) !important;
+    }
+
+    /* Стили для заголовка карточки */
+    .card-header.bg-primary {
+        background: var(--bg-primary) !important;
+    }
+
+    .card-header .btn-light {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        border: none !important;
+    }
+
+    .card-header .btn-light:hover {
+        background: rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+    }
+
+    .card-header .btn-light .bi {
+        color: white !important;
+    }
+
+    .card-header .btn-success {
+        background: rgba(34, 197, 94, 0.9) !important;
+        color: white !important;
+        border: none !important;
+    }
+
+    .card-header .btn-success:hover {
+        background: rgba(34, 197, 94, 1) !important;
+        color: white !important;
+    }
+
+    .card-header .btn-primary {
+        background: rgba(37, 99, 235, 0.9) !important;
+        color: white !important;
+        border: none !important;
+    }
+
+    .card-header .btn-primary:hover {
+        background: rgba(37, 99, 235, 1) !important;
+        color: white !important;
+    }
+
+    /* Стили для заголовка таблицы */
+    .table thead.table-light th {
+        background: var(--table-header-bg) !important;
+        color: var(--dropdown-text) !important;
+        font-weight: 600;
+    }
+
+    /* Стили для ячеек с суммами */
+    .table-light td.row-sum,
+    .table-light td.col-sum {
+        background: var(--table-header-bg) !important;
+        color: var(--dropdown-text) !important;
+        font-weight: 600;
+    }
+
+    /* Явный цвет для заголовка специализации */
+    .card-header .card-title {
+        color: var(--dropdown-text) !important;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+
+    /* Кнопка "Назад" — сделать заметной на светлой теме */
+    .card-header .btn-back {
+        background: var(--bg-secondary) !important;
+        color: var(--btn-primary-bg) !important;
+        border: 1px solid var(--btn-primary-bg) !important;
+        font-weight: 500;
+        opacity: 1 !important;
+    }
+    .card-header .btn-back:hover {
+        background: var(--btn-primary-bg) !important;
+        color: var(--btn-primary-text) !important;
+        border: 1px solid var(--btn-primary-bg) !important;
+    }
+    .card-header .btn-back .bi {
+        color: inherit !important;
+    }
+
+    /* Для темной темы — кнопка "Назад" светлая */
+    [data-theme="dark"] .card-header .btn-back {
+        background: var(--btn-primary-bg) !important;
+        color: var(--btn-primary-text) !important;
+        border: 1px solid var(--btn-primary-bg) !important;
+    }
+    [data-theme="dark"] .card-header .btn-back:hover {
+        background: var(--btn-primary-hover-bg) !important;
+        color: var(--btn-primary-hover-text) !important;
+        border: 1px solid var(--btn-primary-hover-bg) !important;
+    }
+
+    /* Липкая первая строка (заголовки вопросов) — максимально специфично */
+    .table thead tr:first-child th,
+    .table thead tr:first-child td {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--table-header-bg, #1e293b) !important;
+        background: var(--table-header-bg, #1e293b) !important;
+        border-bottom: 2px solid var(--border-color, #334155) !important;
+        opacity: 1 !important;
+        box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+    }
+    [data-theme="dark"] .table thead tr:first-child th,
+    [data-theme="dark"] .table thead tr:first-child td {
+        background-color: var(--table-header-bg, #1e293b) !important;
+        background: var(--table-header-bg, #1e293b) !important;
+        border-bottom: 2px solid var(--border-color, #334155) !important;
+        opacity: 1 !important;
+        box-shadow: 0 2px 8px 0 rgba(0,0,0,0.18);
+    }
+
+    /* Липкий первый столбец (параметры) */
+    .table th:first-child,
+    .table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        background-color: var(--bg-secondary, #1e293b) !important;
+        background: var(--bg-secondary, #1e293b) !important;
+        box-shadow: 2px 0 4px rgba(0,0,0,0.03);
+        opacity: 1 !important;
+    }
+    [data-theme="dark"] .table th:first-child,
+    [data-theme="dark"] .table td:first-child {
+        background-color: var(--bg-secondary, #1e293b) !important;
+        background: var(--bg-secondary, #1e293b) !important;
+        opacity: 1 !important;
+    }
+
+    /* Усилить z-index для пересечения первой строки и первого столбца */
+    .table thead tr:first-child th:first-child,
+    .table thead tr:first-child td:first-child {
+        z-index: 20;
+    }
+    [data-theme="dark"] .table thead tr:first-child th:first-child,
+    [data-theme="dark"] .table thead tr:first-child td:first-child {
+        background-color: var(--table-header-bg, #1e293b) !important;
+        background: var(--table-header-bg, #1e293b) !important;
+        opacity: 1 !important;
+    }
+
+    /* Для скролла */
+    .table-responsive {
+        overflow: auto;
+        max-height: 70vh;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,9 +315,16 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">{{ matrix.name }}</h5>
                     <div>
-                        <a href="{% url 'positions:score_matrices' %}" class="btn btn-light">
+                        <h5 class="card-title mb-0">{{ matrix.name }}</h5>
+                        <div class="score-matrix-subtitle" style="font-size:1rem; color:var(--dropdown-text); opacity:0.85; font-weight:400;">
+                            {% if matrix.description %}
+                            <p class="text-muted">{{ matrix.description }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'positions:score_matrices' %}" class="btn btn-back">
                             <i class="bi bi-arrow-left"></i> Назад
                         </a>
                         <a href="{% url 'positions:download_score_matrix' matrix.id %}" class="btn btn-success me-2">
@@ -23,11 +336,6 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        {% if matrix.description %}
-                        <p class="text-muted">{{ matrix.description }}</p>
-                        {% endif %}
-                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead class="table-light">
@@ -165,6 +473,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     cells.forEach(cell => {
+        // Добавляем обработчик для клавиатуры
+        cell.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+            }
+        });
+
         cell.addEventListener('input', function() {
             const newValue = parseFloat(this.value) || 0;
             
@@ -172,6 +488,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.value = this.defaultValue;
                 return;
             }
+
+            // Добавляем визуальную обратную связь
+            this.classList.add('is-valid');
+            setTimeout(() => this.classList.remove('is-valid'), 1000);
 
             clearTimeout(updateTimeout);
             updateTimeout = setTimeout(() => {

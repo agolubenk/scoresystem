@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'positions/base.html' %}
 {% block title %}{{ candidate.full_name }}{% endblock %}
 {% block content %}
 <div class="container-fluid mt-4">
@@ -229,6 +229,22 @@
                 </div>
             </div>
         </div>
+    </div>
+    <!-- Плавающие кнопки действий -->
+    <div class="floating-action-buttons">
+        <a href="{% url 'positions:interview_create' %}?full_name={{ candidate.full_name|urlencode }}" class="fab-btn fab-interview" title="Провести интервью">
+            <i class="bi bi-person-lines-fill"></i>
+        </a>
+        {% if candidate.telegram %}
+        <a href="{{ candidate.get_telegram_link }}" class="fab-btn fab-telegram" title="Написать в Telegram" target="_blank">
+            <i class="bi bi-telegram"></i>
+        </a>
+        {% endif %}
+        {% if candidate.email %}
+        <a href="mailto:{{ candidate.email }}" class="fab-btn fab-email" title="Отправить письмо">
+            <i class="bi bi-envelope"></i>
+        </a>
+        {% endif %}
     </div>
 </div>
 
@@ -714,5 +730,67 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.floating-action-buttons {
+    position: fixed;
+    right: 36px;
+    top: 55%;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: flex-end;
+}
+.fab-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.10), 0 1.5px 4px rgba(0,0,0,0.08);
+    font-size: 1.7rem;
+    color: #fff;
+    background: var(--btn-primary-bg);
+    transition: background 0.2s, box-shadow 0.2s, color 0.2s, transform 0.15s;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    text-decoration: none;
+}
+.fab-btn:hover, .fab-btn:focus {
+    background: var(--btn-primary-hover-bg);
+    color: #fff;
+    box-shadow: 0 6px 24px rgba(37,99,235,0.18), 0 2px 8px rgba(0,0,0,0.12);
+    transform: translateY(-2px) scale(1.07);
+}
+.fab-interview {
+    background: #2563eb;
+}
+.fab-interview:hover, .fab-interview:focus {
+    background: #1e40af;
+}
+.fab-telegram {
+    background: #229ED9;
+}
+.fab-telegram:hover, .fab-telegram:focus {
+    background: #1787b8;
+}
+.fab-email {
+    background: #10b981;
+}
+.fab-email:hover, .fab-email:focus {
+    background: #059669;
+}
+.fab-btn i {
+    color: #fff;
+}
+[data-theme="dark"] .fab-btn {
+    box-shadow: 0 4px 16px rgba(37,99,235,0.18), 0 1.5px 4px rgba(0,0,0,0.18);
+}
+</style>
 {% endblock %}
 {% endblock %}
