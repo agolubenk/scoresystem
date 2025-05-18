@@ -1,0 +1,202 @@
+{% extends 'positions/base.html' %}
+{% block title %}Визуальная оргструктура (d3.js){% endblock %}
+{% block content %}
+<div class="container-fluid py-4" style="background: var(--bg-secondary); position: relative; height: calc(100vh - 56px);">
+    <h2 style="color: var(--dropdown-text);">Визуализация оргструктуры</h2>
+    <div id="d3tree-container" style="width:100%; height: calc(100vh - 108px); min-height:400px; position: relative;"></div>
+    <div id="zoom-controls" style="position: absolute; right: 40px; bottom: 40px; z-index: 10; display: flex; flex-direction: column; gap: 12px;">
+        <button id="zoom-in" class="zoom-btn" title="Увеличить" type="button">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="13" cy="13" r="10" stroke="#2563eb" stroke-width="2" fill="#fff"/>
+                <rect x="12" y="8" width="2" height="10" rx="1" fill="#2563eb"/>
+                <rect x="8" y="12" width="10" height="2" rx="1" fill="#2563eb"/>
+                <line x1="19.7071" y1="19.2929" x2="25" y2="24.5858" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <button id="zoom-out" class="zoom-btn" title="Уменьшить" type="button">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="13" cy="13" r="10" stroke="#2563eb" stroke-width="2" fill="#fff"/>
+                <rect x="8" y="12" width="10" height="2" rx="1" fill="#2563eb"/>
+                <line x1="19.7071" y1="19.2929" x2="25" y2="24.5858" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<!-- D3.js CDN -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+    function getCssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+    function setD3ContainerHeight() {
+        const h = window.innerHeight - 56 - 28;
+        document.getElementById('d3tree-container').style.height = h + 'px';
+    }
+    window.addEventListener('resize', setD3ContainerHeight);
+    document.addEventListener('DOMContentLoaded', function() {
+        setD3ContainerHeight();
+        const data = {{ d3_data|safe }};
+        const rectWidth = 200;
+        const rectHeight = 54;
+        const dx = 200;
+        const dy = 240;
+        const tree = d3.tree().nodeSize([dy, dx]);
+        const diagonal = d3.linkVertical().x(d => d.x).y(d => d.y);
+
+        const root = d3.hierarchy(data);
+        tree(root);
+
+        let x0 = Infinity, x1 = -x0;
+        let y0 = Infinity, y1 = -y0;
+        root.each(d => {
+            if (d.x > x1) x1 = d.x;
+            if (d.x < x0) x0 = d.x;
+            if (d.y > y1) y1 = d.y;
+            if (d.y < y0) y0 = d.y;
+        });
+
+        const container = document.getElementById('d3tree-container');
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
+        const width = Math.max(containerWidth, x1 - x0 + dy * 2);
+        const height = Math.max(containerHeight, y1 - y0 + dx * 2);
+        const centerX = width / 2 - (x0 + (x1 - x0) / 2);
+
+        // --- D3 ZOOM ---
+        const svg = d3.select('#d3tree-container').append('svg')
+            .attr('width', '100%')
+            .attr('height', height)
+            .attr('viewBox', [0, 0, width, height])
+            .style('font', '12px sans-serif')
+            .style('user-select', 'none')
+            .style('display', 'block')
+            .style('margin', '0 auto');
+
+        const g = svg.append('g').attr('transform', `translate(${centerX},${dx/2})`);
+
+        // Линии
+        function getLineColor() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            if (theme === 'dark') {
+                return getCssVar('--btn-primary-bg') || '#6366f1';
+            } else {
+                return '#1e293b';
+            }
+        }
+        let lineColor = getLineColor();
+        const lineOpacity = 0.85;
+        const lineWidth = 2.5;
+        const linkGroup = g.append('g')
+            .attr('fill', 'none')
+            .attr('stroke', lineColor)
+            .attr('stroke-opacity', lineOpacity)
+            .attr('stroke-width', lineWidth)
+            .selectAll('path')
+            .data(root.links())
+            .join('path')
+            .attr('d', diagonal);
+
+        // Узлы-блоки
+        const node = g.append('g')
+            .selectAll('g')
+            .data(root.descendants())
+            .join('g')
+            .attr('transform', d => `translate(${d.x},${d.y})`);
+
+        node.append('rect')
+            .attr('x', -rectWidth/2)
+            .attr('y', -rectHeight/2)
+            .attr('width', rectWidth)
+            .attr('height', rectHeight)
+            .attr('rx', 10)
+            .attr('fill', d => d.data.color || '#2563eb');
+
+        // Текст внутри блока, с переносом по словам
+        const textColor = getCssVar('--btn-primary-text') || '#fff';
+        node.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '12px')
+            .attr('fill', textColor)
+            .each(function(d) {
+                const name = d.data.name;
+                const maxLen = 28;
+                const words = name.split(' ');
+                let lines = [];
+                let currentLine = '';
+
+                words.forEach(word => {
+                    if ((currentLine + ' ' + word).trim().length <= maxLen) {
+                        currentLine = (currentLine + ' ' + word).trim();
+                    } else {
+                        if (currentLine) lines.push(currentLine);
+                        currentLine = word;
+                    }
+                });
+                if (currentLine) lines.push(currentLine);
+
+                lines.forEach((line, i) => {
+                    d3.select(this)
+                        .append('tspan')
+                        .attr('x', 0)
+                        .attr('y', 6 + i * 14)
+                        .text(line);
+                });
+            });
+
+        // Перерисовывать цвета при смене темы
+        const observer = new MutationObserver(() => {
+            lineColor = getLineColor();
+            svg.selectAll('g > g > path').attr('stroke', lineColor).attr('stroke-opacity', lineOpacity).attr('stroke-width', lineWidth);
+            const textColor = getCssVar('--btn-primary-text') || '#fff';
+            svg.selectAll('text').attr('fill', textColor);
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+        // --- ZOOM & PAN ---
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 2.5])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+        svg.call(zoom);
+
+        // --- Кнопки масштабирования ---
+        const zoomInBtn = document.getElementById('zoom-in');
+        const zoomOutBtn = document.getElementById('zoom-out');
+        let currentTransform = d3.zoomIdentity.translate(centerX, dx/2);
+        svg.call(zoom.transform, currentTransform);
+
+        zoomInBtn.addEventListener('click', function() {
+            svg.transition().duration(200).call(zoom.scaleBy, 1.2);
+        });
+        zoomOutBtn.addEventListener('click', function() {
+            svg.transition().duration(200).call(zoom.scaleBy, 0.8);
+        });
+    });
+</script>
+<style>
+.zoom-btn {
+    background: #fff;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.10);
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.2s, background 0.2s;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+}
+.zoom-btn:hover {
+    background: #e0e7ff;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.18);
+}
+.zoom-btn svg {
+    display: block;
+}
+</style>
+{% endblock %} 

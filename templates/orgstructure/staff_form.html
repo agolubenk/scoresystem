@@ -1,0 +1,115 @@
+{% extends 'positions/base.html' %}
+{% block title %}{% if action == 'add' %}Добавить сотрудника{% else %}Редактировать сотрудника{% endif %}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{% if action == 'add' %}Добавить сотрудника{% else %}Редактировать сотрудника{% endif %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.non_field_errors }}
+                        
+                        <div class="mb-3">
+                            <label for="id_candidate" class="form-label">Кандидат</label>
+                            {{ form.candidate }}
+                            {{ form.candidate.errors }}
+                            {% if form.candidate.help_text %}
+                                <div class="form-text">{{ form.candidate.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_position" class="form-label">Должность</label>
+                            {{ form.position }}
+                            {{ form.position.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_department" class="form-label">Отдел</label>
+                            {{ form.department }}
+                            {{ form.department.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email</label>
+                            {{ form.email }}
+                            {{ form.email.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_phone" class="form-label">Телефон</label>
+                            {{ form.phone }}
+                            {{ form.phone.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_hired_at" class="form-label">Дата найма</label>
+                            {{ form.hired_at }}
+                            {{ form.hired_at.errors }}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="id_is_active">
+                                    Работает в компании
+                                </label>
+                            </div>
+                            {{ form.is_active.errors }}
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'orgstructure:org_tree' %}" class="btn btn-secondary">Отмена</a>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const candidateSelect = document.getElementById('id_candidate');
+        const positionInput = document.getElementById('id_position');
+        const emailInput = document.getElementById('id_email');
+        const phoneInput = document.getElementById('id_phone');
+        const candidates = {{ candidates_json|safe }};
+
+        function fillFields(candidateId) {
+            const candidate = candidates.find(c => c.id == candidateId);
+            if (candidate) {
+                positionInput.value = candidate.desired_position || '';
+                emailInput.value = candidate.email || '';
+                phoneInput.value = candidate.phone || '';
+                positionInput.readOnly = true;
+                emailInput.readOnly = true;
+                phoneInput.readOnly = true;
+            } else {
+                positionInput.value = '';
+                emailInput.value = '';
+                phoneInput.value = '';
+                positionInput.readOnly = false;
+                emailInput.readOnly = false;
+                phoneInput.readOnly = false;
+            }
+        }
+
+        // При загрузке страницы, если выбран кандидат, сразу заполняем
+        if (candidateSelect.value) {
+            fillFields(candidateSelect.value);
+        }
+
+        candidateSelect.addEventListener('change', function() {
+            fillFields(this.value);
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %} 

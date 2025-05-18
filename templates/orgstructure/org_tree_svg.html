@@ -1,0 +1,32 @@
+{% load static %}
+{% comment %}
+  departments — корневые отделы (parent=None)
+  Рекурсивно рисуем дерево через SVG (простая версия)
+{% endcomment %}
+
+<style>
+    [data-theme="dark"] #org-svg-tree .org-rect {
+        fill: #232946 !important;
+        stroke: #a5b4fc !important;
+    }
+    [data-theme="dark"] #org-svg-tree text {
+        fill: #f1f5f9 !important;
+    }
+    [data-theme="dark"] #org-svg-tree line {
+        stroke: #a5b4fc !important;
+    }
+</style>
+
+<div style="min-width:1200px; min-height:400px;">
+<svg width="100%" height="600" xmlns="http://www.w3.org/2000/svg" id="org-svg-tree">
+    {% with x=80 y=60 box_w=200 box_h=50 h_gap=80 v_gap=100 svg_fill="#fff" svg_stroke="#222" svg_text="#222" %}
+    {% for dep in departments %}
+        {% include 'orgstructure/org_tree_svg_node.html' with department=dep x=x y=y box_w=box_w box_h=box_h h_gap=h_gap v_gap=v_gap svg_fill=svg_fill svg_stroke=svg_stroke svg_text=svg_text staff=dep.staff.all %}
+    {% endfor %}
+    {% endwith %}
+</svg>
+</div>
+
+{% comment %}
+org_tree_svg_node.html — рекурсивный шаблон для отрисовки одного узла и его детей
+{% endcomment %} 

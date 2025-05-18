@@ -1,0 +1,40 @@
+{#
+  department — текущий отдел
+  x, y — координаты центра прямоугольника
+  box_w, box_h — размеры прямоугольника
+  h_gap, v_gap — горизонтальный и вертикальный отступы
+  staff — сотрудники отдела
+#}
+<g>
+    <!-- Прямоугольник отдела с адаптацией под тему -->
+    <rect x="{{ department.svg_x }}" y="{{ department.svg_y }}" width="{{ box_w }}" height="{{ box_h }}" rx="12"
+        fill="{{ svg_fill|default:'#fff' }}" stroke="{{ svg_stroke|default:'#222' }}" stroke-width="2" class="org-rect"/>
+    <!-- Всплывающая подсказка -->
+    <title>{{ department.name }}{% if department.parent %} (Вышестоящий: {{ department.parent.name }}){% endif %}</title>
+    <!-- Текст отдела -->
+    {% with center_x=department.svg_center_x center_y=department.svg_y|add:box_h %}
+        <text x="{{ center_x }}" y="{% widthratio center_y 2 1 %}" text-anchor="middle" alignment-baseline="middle" font-size="18" font-family="Arial" fill="{{ svg_text|default:'#222' }}">{{ department.name }}</text>
+    {% endwith %}
+    {# Сотрудники отдела — кружки под прямоугольником #}
+    {% if department.staff_coords %}
+        {% for s in department.staff_coords %}
+            <circle cx="{{ s.x }}" cy="{{ s.y }}" r="{{ circle_r }}" fill="#2563eb" stroke="#fff" stroke-width="2">
+                <title>{{ s.full_name }} ({{ s.position }})</title>
+            </circle>
+            <text x="{{ s.x }}" y="{{ s.y|add:6 }}" text-anchor="middle" font-size="14" font-family="Arial" fill="#fff">{{ s.initials }}</text>
+        {% endfor %}
+    {% endif %}
+    {% with children=department.children.all %}
+        {% if children %}
+            {% for child in children %}
+                <!-- Линия от родителя к ребенку -->
+                <line x1="{{ department.svg_center_x }}" y1="{{ department.svg_bottom_y }}" x2="{{ child.svg_center_x }}" y2="{{ child.svg_y }}" stroke="{{ svg_stroke|default:'#222' }}" stroke-width="2"/>
+                {% include 'orgstructure/org_tree_svg_node.html' with department=child box_w=box_w box_h=box_h h_gap=h_gap v_gap=v_gap svg_fill=svg_fill svg_stroke=svg_stroke svg_text=svg_text circle_r=circle_r %}
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</g>
+
+{% comment %}
+Цвета для светлой/тёмной темы будут задаваться через переменные svg_fill, svg_stroke, svg_text из родительского шаблона.
+{% endcomment %} 

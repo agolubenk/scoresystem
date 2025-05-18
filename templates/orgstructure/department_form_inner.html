@@ -1,0 +1,50 @@
+{% comment %}Include: форма отдела для модального окна{% endcomment %}
+<form method="post" id="department-form-modal">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="mb-3">
+        <label for="id_name" class="form-label">Название отдела</label>
+        {{ form.name }}
+        {{ form.name.errors }}
+    </div>
+    <div class="mb-3">
+        <label for="id_parent" class="form-label">Вышестоящий отдел</label>
+        {{ form.parent }}
+        {{ form.parent.errors }}
+    </div>
+    <div class="mb-3">
+        <label for="id_type" class="form-label">Тип отдела</label>
+        {{ form.type }}
+        {{ form.type.errors }}
+    </div>
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+    </div>
+</form>
+
+<script>
+function initDepartmentTypeAutofill() {
+    const nameInput = document.getElementById('id_name');
+    const typeSelect = document.getElementById('id_type');
+    let typeChangedManually = false;
+    if (typeSelect) {
+        typeSelect.addEventListener('change', function() {
+            typeChangedManually = true;
+        });
+    }
+    if (nameInput && typeSelect) {
+        nameInput.addEventListener('input', function() {
+            if (typeChangedManually) return;
+            const firstWord = nameInput.value.trim().split(' ')[0].toLowerCase();
+            for (let i = 0; i < typeSelect.options.length; i++) {
+                if (typeSelect.options[i].text.toLowerCase() === firstWord) {
+                    typeSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        });
+    }
+}
+initDepartmentTypeAutofill();
+</script> 

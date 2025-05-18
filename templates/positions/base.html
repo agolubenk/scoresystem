@@ -661,6 +661,11 @@
                     <i class="bi bi-person-lines-fill"></i> <span>Кандидаты</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'orgstructure' in request.resolver_match.namespace %}active{% endif %}" href="{% url 'orgstructure:org_tree' %}">
+                    <i class="bi bi-diagram-3"></i> <span>Оргструктура</span>
+                </a>
+            </li>
         </ul>
     </nav>
     <a href="#" class="theme-toggle-fixed" title="Сменить тему">

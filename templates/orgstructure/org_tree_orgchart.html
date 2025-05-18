@@ -1,0 +1,46 @@
+{% extends 'positions/base.html' %}
+{% block title %}Визуальная оргструктура (OrgChart){% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2>Визуальная оргструктура (OrgChart JS)</h2>
+    <div id="orgchart-container" style="width:100%; min-height:600px;"></div>
+    <div id="orgchart-test" style="width:100%; min-height:400px; margin-top:40px; border:1px dashed #ccc;"></div>
+    <pre style="background:#f8f9fa; color:#222; font-size:12px; padding:10px; border-radius:6px; margin-top:2em;">
+        {{ orgchart_data|safe }}
+    </pre>
+</div>
+
+<!-- Подключение OrgChart JS (CDN, бесплатная версия) -->
+<script src="https://balkangraph.com/js/latest/OrgChart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Тестовый OrgChart
+        var testChart = new OrgChart(document.getElementById("orgchart-test"), {
+            nodes: [
+                { id: 1, name: "Корень", title: "Директор" },
+                { id: 2, pid: 1, name: "Подчинённый", title: "Менеджер" }
+            ],
+            nodeBinding: {
+                field_0: "name",
+                field_1: "title"
+            }
+        });
+        // Ваш OrgChart
+        console.log("OrgChart data:", {{ orgchart_data|safe }});
+        var chart = new OrgChart(document.getElementById("orgchart-container"), {
+            nodes: {{ orgchart_data|safe }},
+            nodeBinding: {
+                field_0: "name",
+                field_1: "title"
+            },
+            enableSearch: true,
+            toolbar: true,
+            collapse: true,
+            menu: {
+                pdf: { text: "Экспорт в PDF" },
+                csv: { text: "Экспорт в CSV" }
+            }
+        });
+    });
+</script>
+{% endblock %} 
