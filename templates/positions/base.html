@@ -681,40 +681,63 @@
                     <span>HR Система</span>
                 </div>
                 <nav class="topbar-nav d-flex align-items-center ms-4 gap-2 position-relative">
-                    <a href="{% url 'positions:interview_list' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
-                        <i class="bi bi-list-ul"></i>
-                        <span>Интервью</span>
-                    </a>
-                    <a href="{% url 'positions:questions' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
-                        <i class="bi bi-question-circle"></i>
-                        <span>Вопросы</span>
-                    </a>
-                    <div class="custom-dropdown" id="specDropdown">
-                        <a href="#" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium dropdown-toggle-custom" id="specDropdownBtn">
-                            <i class="bi bi-diagram-3"></i>
-                            <span>Специализации и грейды</span>
+                    {% if 'orgstructure' in request.resolver_match.namespace %}
+                        <a href="{% url 'orgstructure:org_tree' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-table"></i>
+                            <span>Оргструктура</span>
                         </a>
-                        <div class="dropdown-menu-custom" id="specDropdownMenu">
-                            <a href="{% url 'positions:grades' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
-                                <i class="bi bi-bar-chart-steps"></i> <span>Грейды</span>
+                        <a href="{% url 'orgstructure:org_tree_d3js' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-diagram-3"></i>
+                            <span>Визуализация оргструктуры</span>
+                        </a>
+                        <a href="#" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-people"></i>
+                            <span>Сотрудники</span>
+                        </a>
+                        <a href="#" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-person-badge"></i>
+                            <span>Штатное расписание</span>
+                        </a>
+                        <a href="#" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-person-plus"></i>
+                            <span>Добавить сотрудника</span>
+                        </a>
+                    {% elif 'positions' in request.resolver_match.namespace %}
+                        <a href="{% url 'positions:interview_list' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-list-ul"></i>
+                            <span>Интервью</span>
+                        </a>
+                        <a href="{% url 'positions:questions' %}" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium">
+                            <i class="bi bi-question-circle"></i>
+                            <span>Вопросы</span>
+                        </a>
+                        <div class="custom-dropdown" id="specDropdown">
+                            <a href="#" class="btn btn-light d-flex align-items-center gap-2 px-3 py-1 fw-medium dropdown-toggle-custom" id="specDropdownBtn">
+                                <i class="bi bi-diagram-3"></i>
+                                <span>Специализации и грейды</span>
                             </a>
-                            <a href="{% url 'positions:positions' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
-                                <i class="bi bi-person-badge"></i> <span>Специализации</span>
-                            </a>
-                            <a href="{% url 'positions:parameters' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
-                                <i class="bi bi-list-check"></i> <span>Параметры</span>
-                            </a>
-                            <a href="{% url 'positions:score_matrices' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
-                                <i class="bi bi-table"></i> <span>Матрицы</span>
-                            </a>
-                            <a href="{% url 'positions:vacancies_list' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
-                                <i class="bi bi-briefcase"></i> <span>Вакансии</span>
-                            </a>
-                            <a href="{% url 'positions:profiles_list' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
-                                <i class="bi bi-person-vcard"></i> <span>Профили должностей</span>
-                            </a>
+                            <div class="dropdown-menu-custom" id="specDropdownMenu">
+                                <a href="{% url 'positions:grades' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                    <i class="bi bi-bar-chart-steps"></i> <span>Грейды</span>
+                                </a>
+                                <a href="{% url 'positions:positions' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                    <i class="bi bi-person-badge"></i> <span>Специализации</span>
+                                </a>
+                                <a href="{% url 'positions:parameters' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                    <i class="bi bi-list-check"></i> <span>Параметры</span>
+                                </a>
+                                <a href="{% url 'positions:score_matrices' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                    <i class="bi bi-table"></i> <span>Матрицы</span>
+                                </a>
+                                <a href="{% url 'positions:vacancies_list' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                    <i class="bi bi-briefcase"></i> <span>Вакансии</span>
+                                </a>
+                                <a href="{% url 'positions:profiles_list' %}" class="dropdown-item-custom d-flex align-items-center gap-2">
+                                    <i class="bi bi-person-vcard"></i> <span>Профили должностей</span>
+                                </a>
+                            </div>
                         </div>
-                    </div>
+                    {% endif %}
                 </nav>
             </div>
             <div class="d-flex align-items-center gap-3">
@@ -801,6 +824,13 @@
         const specDropdown = document.getElementById('specDropdown');
         const specMenu = document.getElementById('specDropdownMenu');
         let specDropdownOpen = false;
+
+        // Кастомное выпадающее меню для topbar (Оргструктура)
+        const orgBtn = document.getElementById('orgDropdownBtn');
+        const orgDropdown = document.getElementById('orgDropdown');
+        const orgMenu = document.getElementById('orgDropdownMenu');
+        let orgDropdownOpen = false;
+
         function openSpecDropdown() {
             specDropdown.classList.add('open');
             specDropdownOpen = true;
@@ -809,13 +839,32 @@
             specDropdown.classList.remove('open');
             specDropdownOpen = false;
         }
+
+        function openOrgDropdown() {
+            orgDropdown.classList.add('open');
+            orgDropdownOpen = true;
+        }
+        function closeOrgDropdown() {
+            orgDropdown.classList.remove('open');
+            orgDropdownOpen = false;
+        }
+
         specBtn.addEventListener('mouseenter', openSpecDropdown);
         specBtn.addEventListener('focus', openSpecDropdown);
         specDropdown.addEventListener('mouseleave', closeSpecDropdown);
         specDropdown.addEventListener('blur', closeSpecDropdown);
+
+        orgBtn.addEventListener('mouseenter', openOrgDropdown);
+        orgBtn.addEventListener('focus', openOrgDropdown);
+        orgDropdown.addEventListener('mouseleave', closeOrgDropdown);
+        orgDropdown.addEventListener('blur', closeOrgDropdown);
+
         document.addEventListener('mousedown', function(e) {
             if (specDropdownOpen && !specDropdown.contains(e.target)) {
                 closeSpecDropdown();
+            }
+            if (orgDropdownOpen && !orgDropdown.contains(e.target)) {
+                closeOrgDropdown();
             }
         });
     </script>
