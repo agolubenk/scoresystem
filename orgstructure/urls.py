@@ -18,4 +18,6 @@ urlpatterns = [
     path('department-types/create/', views.department_type_create, name='department_type_create'),
     path('department-types/<int:pk>/edit/', views.department_type_edit, name='department_type_edit'),
     path('department-types/<int:pk>/delete/', views.department_type_delete, name='department_type_delete'),
+    path('staff/', views.staff_list, name='staff_list'),
+    path('staff/<int:pk>/', views.staff_detail, name='staff_detail'),
 ] 

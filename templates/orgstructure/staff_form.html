@@ -23,6 +23,12 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="id_role" class="form-label">Роль</label>
+                            {{ form.role }}
+                            {{ form.role.errors }}
+                        </div>
+
+                        <div class="mb-3">
                             <label for="id_position" class="form-label">Должность</label>
                             {{ form.position }}
                             {{ form.position.errors }}
@@ -53,12 +59,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <div class="form-check">
-                                {{ form.is_active }}
-                                <label class="form-check-label" for="id_is_active">
-                                    Работает в компании
-                                </label>
-                            </div>
+                            <input type="hidden" name="is_active" value="False">
+                            <input type="checkbox" name="is_active" id="id_is_active" value="True" {% if form.is_active.value %}checked{% endif %}>
+                            <label for="id_is_active">Работает в компании</label>
                             {{ form.is_active.errors }}
                         </div>
 

@@ -14,8 +14,8 @@
     </div>
     {% endif %}
     <div class="row justify-content-center">
-        <div class="col-12 col-xl-10">
-            <div class="card shadow rounded-4" style="min-height:calc(100vh - 100px); display:flex; flex-direction:row;">
+        <div class="col-12 pr-card-candidate" style="max-width:1600px; margin: 0 auto;">
+            <div class="card shadow rounded-4" style="min-height:calc(100vh - 100px); display:flex; flex-direction:row; width:100%;">
                 <div class="row flex-grow-1 w-100 g-0">
                     <div class="col-12 col-lg-6 d-flex flex-column" style="max-height:calc(100vh - 120px); overflow:auto; border-right:1px solid #eee;">
                         <div class="card-body">
@@ -111,10 +111,16 @@
                                 <!-- Резюме и файлы -->
                                 <li class="list-group-item">
                                     <b>Файлы кандидата:</b>
+                                    <div id="dropzone" class="border border-2 border-primary rounded-3 p-4 text-center my-3 bg-light position-relative" style="cursor:pointer;transition:background 0.2s;">
+                                        <i class="bi bi-cloud-arrow-up" style="font-size:2rem;"></i><br>
+                                        <span class="d-block mt-2">Перетащите файлы сюда или <span class="text-primary text-decoration-underline">кликните для выбора</span></span>
+                                        <input type="file" id="files-input" name="files" multiple style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;">
+                                        <span class="text-danger small d-block mt-2" id="files-upload-error"></span>
+                                    </div>
                                     <div class="d-flex flex-column gap-2 w-100" id="candidate-files-list">
                                         {% for f in candidate_files %}
-                                        <div class="card flex-row align-items-center p-2 shadow-sm border-0 w-100 mb-2" style="min-height:60px;">
-                                            <span class="file-icon flex-shrink-0 me-3" style="font-size:2rem;">
+                                        <div class="card flex-row align-items-center p-2 shadow-sm border-0 w-100 mb-2" style="min-height:36px;max-height:56px;">
+                                            <span class="file-icon flex-shrink-0 me-2" style="font-size:1.3rem;">
                                                 {% if f.ext == 'pdf' %}<i class="bi bi-file-earmark-pdf text-danger"></i>
                                                 {% elif f.ext == 'png' or f.ext == 'jpg' or f.ext == 'jpeg' or f.ext == 'gif' or f.ext == 'bmp' or f.ext == 'webp' or f.ext == 'svg' %}<i class="bi bi-file-earmark-image text-primary"></i>
                                                 {% elif f.ext == 'doc' or f.ext == 'docx' or f.ext == 'odt' or f.ext == 'rtf' %}<i class="bi bi-file-earmark-word text-info"></i>
@@ -131,22 +137,16 @@
                                                 {% endif %}
                                             </span>
                                             <div class="flex-grow-1 overflow-hidden">
-                                                <a href="{{ f.url }}" target="_blank" class="fw-bold text-break" style="max-width:100%;display:inline-block;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                <a href="{{ f.url }}" target="_blank" class="fw-bold text-break" style="max-width:100%;display:inline-block;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.98em;">
                                                     {{ f.name|truncatechars:100 }}
                                                 </a>
-                                                <div class="small text-muted">{{ f.uploaded_at|date:'d.m.Y H:i' }}</div>
+                                                <div class="small text-muted" style="font-size:0.85em;">{{ f.uploaded_at|date:'d.m.Y H:i' }}</div>
                                             </div>
-                                            <span class="file-delete-btn ms-2" data-file-id="{{ f.id }}" title="Удалить файл" style="cursor:pointer; color:#dc3545; font-size:1.3rem; display:flex; align-items:center;"><i class="bi bi-trash"></i></span>
+                                            <span class="file-delete-btn ms-2" data-file-id="{{ f.id }}" title="Удалить файл" style="cursor:pointer; color:#dc3545; font-size:1.1rem; display:flex; align-items:center;"><i class="bi bi-trash"></i></span>
                                         </div>
                                         {% empty %}
                                         <div class="text-muted">Нет файлов</div>
                                         {% endfor %}
-                                    </div>
-                                    <div id="dropzone" class="border border-2 border-primary rounded-3 p-4 text-center my-3 bg-light position-relative" style="cursor:pointer;transition:background 0.2s;">
-                                        <i class="bi bi-cloud-arrow-up" style="font-size:2rem;"></i><br>
-                                        <span class="d-block mt-2">Перетащите файлы сюда или <span class="text-primary text-decoration-underline">кликните для выбора</span></span>
-                                        <input type="file" id="files-input" name="files" multiple style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;">
-                                        <span class="text-danger small d-block mt-2" id="files-upload-error"></span>
                                     </div>
                                 </li>
                             </ul>
@@ -154,7 +154,7 @@
                     </div>
                     <div class="col-12 col-lg-6 d-flex flex-column" style="max-height:calc(100vh - 120px); overflow:auto;">
                         <div class="card-body">
-                            <div class="position-sticky bg-white" style="top:0;z-index:11;border-bottom:1px solid #eee;">
+                            <div class="position-sticky card-header-theme" style="top:0;z-index:11;">
                                 <h5 class="card-title mb-0 py-1 px-1" style="font-weight:600;">История (комментариев: {{ comments_count }}, интервью: {{ interviews_count }})</h5>
                             </div>
                             <div class="d-flex flex-column gap-2 mb-3 overflow-auto" id="history-list" style="padding-bottom:70px;max-height:calc(100vh - 220px);">
@@ -241,7 +241,7 @@
                                 {% endif %}
                             </div>
                             <!-- Форма добавления комментария (фиксирована снизу) -->
-                            <form id="add-comment-form" class="mt-3 position-sticky" style="bottom:0;z-index:10;background:rgba(255,255,255,0.95);border-top:1px solid #eee;padding-top:10px;">
+                            <form id="add-comment-form" class="mt-3 position-sticky" style="bottom:0;z-index:10;background:var(--bg-secondary) !important;border-top:1px solid var(--border-color) !important;padding-top:10px;">
                                 <div class="input-group">
                                     <textarea class="form-control" name="text" placeholder="Добавить комментарий..." rows="2" required maxlength="1000"></textarea>
                                     <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i></button>
@@ -269,6 +269,57 @@
             <i class="bi bi-envelope"></i>
         </a>
         {% endif %}
+    </div>
+    <!-- Модальное окно Telegram -->
+    <div class="modal fade modal-bottomsheet" id="telegramModal" tabindex="-1" aria-labelledby="telegramModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 1.5rem 1.5rem 0 0; background: var(--bg-secondary); color: var(--dropdown-text);">
+          <div class="modal-header border-0">
+            <h5 class="modal-title" id="telegramModalLabel"><i class="bi bi-telegram"></i> Чат с кандидатом в Telegram</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <div class="modal-body pb-4" style="min-height:220px;">
+            <div class="d-flex flex-column gap-2 mb-3" id="telegram-chat-mock" style="max-height:260px;overflow-y:auto;">
+              <div class="align-self-end bg-primary bg-opacity-10 rounded-3 px-3 py-2 mb-1" style="max-width:70%;"><b>Вы:</b> Здравствуйте! Готовы обсудить вакансию?</div>
+              <div class="align-self-start bg-light rounded-3 px-3 py-2 mb-1" style="max-width:70%;"><b>{{ candidate.get_telegram_username }}</b>: Да, конечно!</div>
+            </div>
+            <form id="telegram-send-form" class="d-flex gap-2">
+              <input type="text" class="form-control" placeholder="Введите сообщение..." required maxlength="1000">
+              <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i></button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Модальное окно Email -->
+    <div class="modal fade modal-bottomsheet" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 1.5rem 1.5rem 0 0; background: var(--bg-secondary); color: var(--dropdown-text);">
+          <div class="modal-header border-0">
+            <h5 class="modal-title" id="emailModalLabel"><i class="bi bi-envelope"></i> Отправить Email кандидату</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <div class="modal-body pb-4">
+            <form id="email-send-form" class="d-flex flex-column gap-3">
+              <div>
+                <label class="form-label">Кому</label>
+                <input type="email" class="form-control" value="{{ candidate.email }}" readonly>
+              </div>
+              <div>
+                <label class="form-label">Тема</label>
+                <input type="text" class="form-control" placeholder="Тема письма" required maxlength="255">
+              </div>
+              <div>
+                <label class="form-label">Сообщение</label>
+                <textarea class="form-control" rows="5" placeholder="Текст письма..." required maxlength="4000"></textarea>
+              </div>
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Отправить</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 </div>
 
@@ -753,20 +804,111 @@ window.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Открытие модалок по клику на плавающие кнопки
+const telegramBtn = document.querySelector('.fab-telegram');
+if (telegramBtn) {
+    telegramBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const modal = new bootstrap.Modal(document.getElementById('telegramModal'));
+        modal.show();
+    });
+}
+const emailBtn = document.querySelector('.fab-email');
+if (emailBtn) {
+    emailBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const modal = new bootstrap.Modal(document.getElementById('emailModal'));
+        modal.show();
+    });
+}
+// Псевдочат Telegram (только имитация)
+document.getElementById('telegram-send-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const input = this.querySelector('input');
+    const chat = document.getElementById('telegram-chat-mock');
+    if (input.value.trim()) {
+        const msg = document.createElement('div');
+        msg.className = 'align-self-end bg-primary bg-opacity-10 rounded-3 px-3 py-2 mb-1';
+        msg.style.maxWidth = '70%';
+        msg.innerHTML = `<b>Вы:</b> ${input.value}`;
+        chat.appendChild(msg);
+        chat.scrollTop = chat.scrollHeight;
+        input.value = '';
+    }
+});
+// Email форма (только имитация отправки)
+document.getElementById('email-send-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Отправка...';
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send"></i> Отправить';
+        alert('Письмо "отправлено" (имитация)');
+        bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide();
+    }, 1200);
+});
+
+/* Зеленый alert для трудоустройства */
+.alert-success {
+    background: #e6f4ea !important;
+    color: #198754 !important;
+    border-color: #b6e2c6 !important;
+}
+[data-theme="dark"] .alert-success {
+    background: #193c2b !important;
+    color: #34d399 !important;
+    border-color: #14532d !important;
+}
+.alert-success .bi {
+    color: #198754 !important;
+}
+[data-theme="dark"] .alert-success .bi {
+    color: #34d399 !important;
+}
+
+/* Иконка мусорки всегда красная */
+.file-delete-btn .bi-trash {
+    color: #dc3545 !important;
+    transition: color 0.2s;
+}
+.file-delete-btn:hover .bi-trash {
+    color: #a71d2a !important;
+}
 </script>
 {% endblock %}
 
 {% block extra_css %}
 <style>
+.pr-card-candidate {
+    padding-right: 120px;
+}
+@media (max-width: 991.98px) {
+    .pr-card-candidate {
+        padding-right: 0;
+    }
+}
 .floating-action-buttons {
     position: fixed;
-    right: 36px;
+    right: 64px;
     top: 55%;
     z-index: 2000;
     display: flex;
     flex-direction: column;
     gap: 18px;
     align-items: flex-end;
+}
+@media (max-width: 1400px) {
+    .floating-action-buttons {
+        right: 24px;
+    }
+}
+@media (max-width: 991.98px) {
+    .floating-action-buttons {
+        right: 12px;
+    }
 }
 .fab-btn {
     width: 56px;
@@ -792,10 +934,10 @@ window.addEventListener('DOMContentLoaded', function() {
     transform: translateY(-2px) scale(1.07);
 }
 .fab-interview {
-    background: #2563eb;
+    background: var(--btn-primary-bg);
 }
 .fab-interview:hover, .fab-interview:focus {
-    background: #1e40af;
+    background: var(--btn-primary-hover-bg);
 }
 .fab-telegram {
     background: #229ED9;
@@ -814,6 +956,186 @@ window.addEventListener('DOMContentLoaded', function() {
 }
 [data-theme="dark"] .fab-btn {
     box-shadow: 0 4px 16px rgba(37,99,235,0.18), 0 1.5px 4px rgba(0,0,0,0.18);
+}
+
+/* Стили для модальных окон */
+.modal { padding: 0 !important; }
+.modal.show .modal-dialog { align-items: flex-end !important; }
+.modal-bottomsheet .modal-dialog {
+    position: fixed;
+    bottom: 0;
+    right: 0 !important;
+    left: auto !important;
+    margin: 0 !important;
+    width: 400px !important;
+    max-width: 100% !important;
+    top: auto !important;
+    transform: none !important;
+    pointer-events: all;
+    padding-bottom: 0 !important;
+}
+.modal-bottomsheet .modal-content {
+    border-radius: 1.5rem 0 0 0;
+    box-shadow: -2px 0 24px rgba(37,99,235,0.10);
+    margin-bottom: 0 !important;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    color: var(--dropdown-text);
+}
+@media (max-width: 767.98px) {
+    .modal-bottomsheet .modal-dialog {
+        width: 100vw !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+    .modal-bottomsheet .modal-content {
+        border-radius: 1.5rem 1.5rem 0 0;
+    }
+}
+
+/* Стили для карточки кандидата */
+.card {
+    background: var(--bg-secondary);
+    color: var(--dropdown-text);
+    border: none;
+    border-radius: 1rem;
+    box-shadow: var(--card-shadow);
+}
+.list-group-item {
+    background: var(--bg-secondary);
+    color: var(--dropdown-text);
+    border-color: var(--border-color);
+}
+.editable-field {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+.editable-field:hover {
+    background: var(--inline-edit-bg);
+}
+.edit-inline-form input,
+.edit-inline-form select,
+.edit-inline-form textarea {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--dropdown-text) !important;
+}
+.edit-inline-form input:focus,
+.edit-inline-form select:focus,
+.edit-inline-form textarea:focus {
+    border-color: var(--btn-primary-bg) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15) !important;
+}
+
+/* Стили для истории */
+#history-list .card {
+    background: var(--bg-secondary);
+    border: none;
+    box-shadow: var(--card-shadow);
+}
+#history-list .card.bg-light {
+    background: var(--inline-edit-bg) !important;
+}
+#history-list .card.bg-warning {
+    background: rgba(255, 193, 7, 0.1) !important;
+}
+#history-list .card.border-primary {
+    border-color: var(--btn-primary-bg) !important;
+}
+#history-list .card.border-success {
+    border-color: #10b981 !important;
+}
+#history-list .text-muted {
+    color: var(--dropdown-text) !important;
+    opacity: 0.7;
+}
+
+/* Стили для формы комментариев */
+#add-comment-form {
+    background: var(--bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+}
+#add-comment-form textarea {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--dropdown-text) !important;
+}
+#add-comment-form textarea:focus {
+    border-color: var(--btn-primary-bg) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15) !important;
+}
+
+/* Стили для файлов */
+#dropzone {
+    background: var(--inline-edit-bg) !important;
+    border-color: var(--btn-primary-bg) !important;
+}
+#dropzone:hover {
+    background: var(--dropdown-hover-bg) !important;
+}
+.file-icon {
+    color: var(--dropdown-text);
+}
+.file-delete-btn {
+    color: var(--btn-primary-bg) !important;
+}
+.file-delete-btn:hover {
+    color: #dc3545 !important;
+}
+
+/* Стили для чата */
+#telegram-chat-mock .bg-light {
+    background: var(--inline-edit-bg) !important;
+}
+#telegram-chat-mock .bg-primary {
+    background: var(--btn-primary-bg) !important;
+    opacity: 0.1;
+}
+#telegram-chat-mock .text-primary {
+    color: var(--btn-primary-bg) !important;
+}
+
+/* Стили для email формы */
+#email-send-form input,
+#email-send-form textarea {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--dropdown-text) !important;
+}
+#email-send-form input:focus,
+#email-send-form textarea:focus {
+    border-color: var(--btn-primary-bg) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.15) !important;
+}
+
+/* Sticky-заголовок истории */
+.card-header-theme {
+    background: var(--bg-secondary) !important;
+    color: var(--dropdown-text) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* Цвет иконок в карточках, списках, истории, файлах */
+.card .bi,
+.list-group-item .bi,
+#history-list .bi,
+.file-icon .bi {
+    color: var(--btn-primary-bg) !important;
+}
+[data-theme="dark"] .card .bi,
+[data-theme="dark"] .list-group-item .bi,
+[data-theme="dark"] #history-list .bi,
+[data-theme="dark"] .file-icon .bi {
+    color: var(--btn-primary-text) !important;
+}
+
+/* Sticky-блоки: убираем bg-white, используем переменную */
+.position-sticky.bg-white {
+    background: var(--bg-secondary) !important;
+    color: var(--dropdown-text) !important;
 }
 </style>
 {% endblock %}

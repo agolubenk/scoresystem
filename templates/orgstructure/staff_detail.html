@@ -1,0 +1,86 @@
+{% extends 'positions/base.html' %}
+{% block title %}{{ staff.full_name }} — сотрудник{% endblock %}
+{% block content %}
+<div class="container py-4" style="background: var(--bg-secondary); min-height: 100vh;">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-7">
+            <div class="card shadow-lg" style="background: var(--bg-secondary); color: var(--dropdown-text);">
+                <div class="card-header d-flex align-items-center justify-content-between bg-primary text-white rounded-top">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-person-circle fs-2"></i>
+                        <div>
+                            <h4 class="mb-0">{{ staff.full_name }}</h4>
+                            <div class="small">{{ staff.position }}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'orgstructure:staff_edit' staff.pk %}" class="btn btn-sm btn-outline-light me-2"><i class="bi bi-pencil"></i> Редактировать</a>
+                        <a href="{% url 'orgstructure:staff_delete' staff.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Отдел</dt>
+                        <dd class="col-sm-8">{{ staff.department.name }}</dd>
+
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">{{ staff.email|default:'—' }}</dd>
+
+                        <dt class="col-sm-4">Телефон</dt>
+                        <dd class="col-sm-8">{{ staff.phone|default:'—' }}</dd>
+
+                        <dt class="col-sm-4">Дата найма</dt>
+                        <dd class="col-sm-8">{{ staff.hired_at|date:'d.m.Y' }}</dd>
+
+                        <dt class="col-sm-4">Статус</dt>
+                        <dd class="col-sm-8">{% if staff.is_active %}<span class="badge bg-success">Работает</span>{% else %}<span class="badge bg-secondary">Уволен</span>{% endif %}</dd>
+
+                        <dt class="col-sm-4">Роль</dt>
+                        <dd class="col-sm-8">{{ staff.get_role_display }}</dd>
+
+                        {% if staff.candidate %}
+                        <dt class="col-sm-4">Кандидат</dt>
+                        <dd class="col-sm-8">{{ staff.candidate.full_name }}</dd>
+                        {% endif %}
+                    </dl>
+                    {% if staff.transfers.exists %}
+                    <hr>
+                    <h5 class="mt-4 mb-3">История переводов и повышений</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle" style="background: var(--bg-secondary); color: var(--dropdown-text);">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Тип события</th>
+                                    <th>Из отдела</th>
+                                    <th>В отдел</th>
+                                    <th>Была должность</th>
+                                    <th>Стала должность</th>
+                                    <th>Комментарий</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in staff.transfers.all %}
+                                <tr>
+                                    <td>{{ t.date|date:'d.m.Y' }}</td>
+                                    <td>{{ t.get_event_type_display }}</td>
+                                    <td>{{ t.from_department.name|default:'—' }}</td>
+                                    <td>{{ t.to_department.name|default:'—' }}</td>
+                                    <td>{{ t.from_position|default:'—' }}</td>
+                                    <td>{{ t.to_position|default:'—' }}</td>
+                                    <td>{{ t.comment|default:'—' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                    <a href="{% url 'orgstructure:staff_list' %}" class="btn btn-link"><i class="bi bi-arrow-left"></i> Все сотрудники</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

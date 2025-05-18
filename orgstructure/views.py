@@ -29,6 +29,12 @@ class DepartmentForm(forms.ModelForm):
         }
 
 class StaffMemberForm(forms.ModelForm):
+    role = forms.ChoiceField(
+        choices=StaffMember.ROLE_CHOICES,
+        required=True,
+        label='Роль',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
     candidate = forms.ModelChoiceField(
         queryset=Candidate.objects.filter(staff_members__isnull=True),
         required=False,
@@ -39,8 +45,9 @@ class StaffMemberForm(forms.ModelForm):
 
     class Meta:
         model = StaffMember
-        fields = ['candidate', 'position', 'department', 'email', 'phone', 'hired_at', 'is_active']
+        fields = ['candidate', 'role', 'position', 'department', 'email', 'phone', 'hired_at', 'is_active']
         widgets = {
+            'role': forms.Select(attrs={'class': 'form-select'}),
             'position': forms.TextInput(attrs={'class': 'form-control'}),
             'department': forms.Select(attrs={'class': 'form-select'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
@@ -62,7 +69,9 @@ class StaffMemberForm(forms.ModelForm):
         candidate = self.cleaned_data.get('candidate')
         if candidate:
             instance.candidate = candidate
-            instance.position = candidate.desired_position
+            # Переносим роль из кандидата, если есть, иначе employee
+            instance.role = getattr(candidate, 'role', 'employee')
+            instance.full_name = candidate.full_name
             instance.email = candidate.email
             instance.phone = candidate.phone
         if commit:
@@ -196,7 +205,7 @@ def staff_create(request):
         form = StaffMemberForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('orgstructure:org_tree')
+            return redirect('orgstructure:staff_list')
     else:
         form = StaffMemberForm()
     return render(request, 'orgstructure/staff_form.html', {
@@ -221,7 +230,7 @@ def staff_edit(request, pk):
         form = StaffMemberForm(request.POST, instance=staff)
         if form.is_valid():
             form.save()
-            return redirect('orgstructure:org_tree')
+            return redirect('orgstructure:staff_list')
     else:
         form = StaffMemberForm(instance=staff)
     return render(request, 'orgstructure/staff_form.html', {
@@ -354,3 +363,11 @@ def department_type_delete(request, pk):
     dt = get_object_or_404(DepartmentType, pk=pk)
     dt.delete()
     return JsonResponse({'success': True})
+
+def staff_list(request):
+    staff = StaffMember.objects.select_related('department').all().order_by('-is_active', 'full_name')
+    return render(request, 'orgstructure/staff_list.html', {'staff': staff})
+
+def staff_detail(request, pk):
+    staff = get_object_or_404(StaffMember, pk=pk)
+    return render(request, 'orgstructure/staff_detail.html', {'staff': staff})
